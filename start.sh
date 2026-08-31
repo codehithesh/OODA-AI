@@ -174,19 +174,60 @@ fi
 step "8/10  API key validation"
 _get_env_val() { grep -E "^${1}=" "${ENV_FILE}" | cut -d'=' -f2- | tr -d '"' | tr -d "'"; }
 
-OPENAI_KEY=$(_get_env_val "OPENAI_API_KEY")
-ANTHROPIC_KEY=$(_get_env_val "ANTHROPIC_API_KEY")
+# All supported provider keys (local providers need no key)
+PROVIDER_KEYS=(
+  ANTHROPIC_API_KEY
+  OPENAI_API_KEY
+  XAI_API_KEY
+  GEMINI_API_KEY
+  GROQ_API_KEY
+  MISTRAL_API_KEY
+  PERPLEXITYAI_API_KEY
+  COHERE_API_KEY
+  CEREBRAS_API_KEY
+  SAMBANOVA_API_KEY
+  FIREWORKS_AI_API_KEY
+  TOGETHER_API_KEY
+  DEEPINFRA_API_KEY
+  HYPERBOLIC_API_KEY
+  REPLICATE_API_KEY
+  HUGGINGFACE_API_KEY
+  NVIDIA_NIM_API_KEY
+  LAMBDA_API_KEY
+  DEEPSEEK_API_KEY
+  MOONSHOT_API_KEY
+  DASHSCOPE_API_KEY
+  ZAI_API_KEY
+  MINIMAX_API_KEY
+  VOLCENGINE_API_KEY
+  QIANFAN_AK
+  TENCENTCLOUD_SECRET_ID
+  MODELSCOPE_API_KEY
+  AWS_ACCESS_KEY_ID
+  AZURE_API_KEY
+  AZURE_AI_API_KEY
+  WATSONX_API_KEY
+  DATABRICKS_API_KEY
+  OPENROUTER_API_KEY
+  AIML_API_KEY
+  NOVITA_API_KEY
+)
 
-if [[ -z "${OPENAI_KEY}" && -z "${ANTHROPIC_KEY}" ]]; then
-  error "Neither OPENAI_API_KEY nor ANTHROPIC_API_KEY is set in .env"
-  error "LiteLLM will fail to route requests without at least one provider key."
-  error "Edit ${ENV_FILE} and set at least one key, then re-run."
-  exit 1
-elif [[ -n "${OPENAI_KEY}" ]]; then
-  success "OPENAI_API_KEY is set"
-fi
-if [[ -n "${ANTHROPIC_KEY}" ]]; then
-  success "ANTHROPIC_API_KEY is set"
+FOUND_KEY=false
+for key in "${PROVIDER_KEYS[@]}"; do
+  val=$(_get_env_val "${key}")
+  if [[ -n "${val}" ]]; then
+    success "${key} is set"
+    FOUND_KEY=true
+  fi
+done
+
+# Local providers (Ollama, LM Studio, vLLM) don't need a key — if agent-default
+# in litellm_config.yaml points to one of those, that's fine too.
+if ! $FOUND_KEY; then
+  warn "No cloud LLM provider API key found in .env"
+  warn "If you're using a local provider (Ollama, LM Studio, vLLM) this is fine."
+  warn "Otherwise set at least one key and uncomment the matching block in litellm_config.yaml"
 fi
 
 # ── 9. Corrupt open-webui volume detection & repair ───────────────────────────
