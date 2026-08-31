@@ -7,13 +7,17 @@
 model_list:
   - model_name: agent-default # alias the backend requests
     litellm_params:
-      model: openai/gpt-4o-mini # provider/model actually routed to
-      api_key: os.environ/OPENAI_API_KEY
-  # Example: a second, stronger alias for specific agents
-  # - model_name: agent-strong
+      model: anthropic/claude-haiku-3-5-20241022 # fast + affordable
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: agent-strong
+    litellm_params:
+      model: anthropic/claude-sonnet-4-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+  # Fallback to OpenAI if needed
+  # - model_name: agent-default
   #   litellm_params:
-  #     model: anthropic/claude-sonnet-4-20250514
-  #     api_key: os.environ/ANTHROPIC_API_KEY
+  #     model: openai/gpt-4o-mini
+  #     api_key: os.environ/OPENAI_API_KEY
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
