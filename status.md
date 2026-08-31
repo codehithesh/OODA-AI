@@ -217,3 +217,39 @@ make eval-local   # ✅ 18 eval cases with real LLM
 ---
 
 **The backend is complete, tested, documented, and ready for production deployment.** 🚀
+
+## Setup steps for local use
+
+```bash
+# Install uv if it is not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Load it in the current shell
+source $HOME/.local/bin/env
+
+# Install Docker Desktop if it is not already installed
+# Option 1: Homebrew
+brew install --cask docker
+
+# Then open Docker Desktop
+open -a Docker
+
+# Verify Docker is available
+docker --version
+docker compose version
+
+# Run from the project root
+cd /Users/hithesh/Documents/GitHub/OODA-Agent/multi-agent-backend
+
+# 1. Quick local test (no Docker)
+make test-local
+
+# 2. Evaluate agents locally
+make eval-local
+
+# 3. Start the full stack
+make dev
+
+# 4. Test one endpoint
+curl -s localhost:8000/v1/models | jq '.data[].id'
+```
