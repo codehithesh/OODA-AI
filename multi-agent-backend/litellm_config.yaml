@@ -1,0 +1,24 @@
+# LiteLLM proxy configuration — one unified OpenAI-compatible endpoint for
+# every provider. The backend only ever talks to this proxy via
+# LITELLM_BASE_URL + DEFAULT_MODEL ("agent-default" below).
+#
+# Swap the entries for whichever provider keys you have; nothing else in the
+# stack needs to change.
+model_list:
+  - model_name: agent-default # alias the backend requests
+    litellm_params:
+      model: openai/gpt-4o-mini # provider/model actually routed to
+      api_key: os.environ/OPENAI_API_KEY
+  # Example: a second, stronger alias for specific agents
+  # - model_name: agent-strong
+  #   litellm_params:
+  #     model: anthropic/claude-sonnet-4-20250514
+  #     api_key: os.environ/ANTHROPIC_API_KEY
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  drop_params: true
+  # exposes the x-litellm-response-cost header the backend uses for cost tracking
+  return_response_headers: true
