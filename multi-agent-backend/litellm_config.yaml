@@ -11,27 +11,83 @@
 model_list:
 
   # ════════════════════════════════════════════════════════════════════════════
-  # OPENROUTER  (one key → 200+ models, including free :free variants)
+  # OPENROUTER  (one key → 200+ models)
+  # Free models verified live on 2026-08-31 via /api/v1/models.
+  # Multiple entries under the same model_name = automatic fallback chain.
+  # LiteLLM tries each in order when one is rate-limited or unavailable.
   # ════════════════════════════════════════════════════════════════════════════
 
-  - model_name: openrouter-llama-free          # free, no spend needed
+  # Primary free alias — 5-model fallback chain
+  - model_name: openrouter-free               # primary: Nvidia Nemotron Ultra 550B
     litellm_params:
-      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      model: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
       api_key: os.environ/OPENROUTER_API_KEY
 
-  - model_name: openrouter-deepseek-free       # free DeepSeek R1
+  - model_name: openrouter-free               # fallback 1: Nvidia Nemotron Super 120B
     litellm_params:
-      model: openrouter/deepseek/deepseek-r1:free
+      model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
       api_key: os.environ/OPENROUTER_API_KEY
 
-  - model_name: openrouter-qwen-free           # free Qwen3 235B
+  - model_name: openrouter-free               # fallback 2: MiniMax M3
     litellm_params:
-      model: openrouter/qwen/qwen3-235b-a22b:free
+      model: openrouter/minimax/minimax-m3:free
       api_key: os.environ/OPENROUTER_API_KEY
 
-  - model_name: openrouter-gemma-free          # free Google Gemma 3
+  - model_name: openrouter-free               # fallback 3: Google Gemma 4 31B
     litellm_params:
-      model: openrouter/google/gemma-3-27b-it:free
+      model: openrouter/google/gemma-4-31b-it:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-free               # fallback 4: Z.AI GLM-5.2
+    litellm_params:
+      model: openrouter/z-ai/glm-5.2:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # Individual free model aliases
+  - model_name: openrouter-nemotron-ultra     # 550B MoE, 1M ctx
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-nemotron-super     # 120B MoE, 262K ctx
+    litellm_params:
+      model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-minimax-m3         # MiniMax M3 free
+    litellm_params:
+      model: openrouter/minimax/minimax-m3:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-minimax-m2         # MiniMax M2.7 free
+    litellm_params:
+      model: openrouter/minimax/minimax-m2.7:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-gemma-free         # Google Gemma 4 31B free
+    litellm_params:
+      model: openrouter/google/gemma-4-31b-it:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-glm-free           # Zhipu GLM-5.2 free
+    litellm_params:
+      model: openrouter/z-ai/glm-5.2:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # Paid OpenRouter aliases (uses your key balance)
+  - model_name: openrouter-claude-sonnet
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-gpt4o
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-kimi
+    litellm_params:
+      model: openrouter/moonshotai/kimi-k2
       api_key: os.environ/OPENROUTER_API_KEY
 
   - model_name: openrouter-claude-sonnet       # paid — Anthropic via OR
