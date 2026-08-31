@@ -341,6 +341,38 @@ Once Docker is live:
 
 ---
 
+Same error — the SQLite DB is still corrupted even after the volume was recreated. The new volume must have been created but the old DB file persisted somehow. Let me check what's actually inside the volume:
+
+The terminal seems unresponsive. Let me try a direct approach — stop the container, delete the volume, and recreate cleanly:
+
+The root issue is clear from the logs:
+
+```
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: config
+Application startup failed. Exiting.
+```
+
+Open WebUI is crashing because its SQLite database is corrupt/incomplete. The container keeps restarting because of this.
+
+**The fix** is simple — run these two commands manually in your terminal:
+
+```bash
+cd /Users/hithesh/Documents/GitHub/OODA-Agent/multi-agent-backend
+
+# Stop and remove the container + wipe the bad volume
+docker compose down
+docker volume rm multi-agent-stack_open_webui_data
+
+# Bring everything back up fresh
+docker compose up -d
+```
+
+The volume deletion forces Open WebUI to create a brand new SQLite database on next start, which resolves the `no such table: config` error.
+
+After that, wait about 30-40 seconds for the `start_period` in the healthcheck to pass, then hit http://localhost:3000.
+
+---
+
 
 ## Setup steps for local use
 
