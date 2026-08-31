@@ -11,6 +11,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
+from decimal import Decimal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 ChatRole = Literal["system", "user", "assistant", "tool"]
@@ -121,7 +123,7 @@ class DecisionLogRead(BaseModel):
     output: dict[str, Any] | None = None
     evaluation_score: float | None = None
     latency_ms: int | None = None
-    cost_usd: float | None = None
+    cost_usd: Decimal | None = None
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     error: str | None = None

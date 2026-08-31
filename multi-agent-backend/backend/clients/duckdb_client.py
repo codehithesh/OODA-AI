@@ -84,13 +84,23 @@ def _jsonify(value: Any) -> Any:
 class DuckDBClient:
     """In-process DuckDB connection for analytical queries."""
 
-    def __init__(self, path: Path, max_rows: int = 200) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.path = path
+    def __init__(self, path: str | Path, max_rows: int = 200) -> None:
+        if str(path) != ":memory:":
+            path_obj = Path(path)
+            path_obj.parent.mkdir(parents=True, exist_ok=True)
+            self.path = path_obj
+            connect_path = str(path_obj)
+        else:
+            self.path = Path(":memory:")
+            connect_path = ":memory:"
         self.max_rows = max_rows
-        self._conn = duckdb.connect(str(path))
+        self._conn = duckdb.connect(connect_path)
         self._lock = asyncio.Lock()
-        logger.info("duckdb_ready", path=str(path))
+        logger.info("duckdb_ready", path=str(connect_path))
+
+    def execute(self, sql: str, params: list[Any] | None = None) -> Any:
+        """Synchronous execution for tests and direct callers."""
+        return self._conn.execute(sql, params or [])
 
     # ---------------------------------------------------------------- query
     def _query_sync(self, sql: str, params: list[Any] | None = None) -> dict[str, Any]:
@@ -105,8 +115,12 @@ class DuckDBClient:
             "truncated": len(rows) >= self.max_rows,
         }
 
-    async def query(self, sql: str, params: list[Any] | None = None) -> dict[str, Any]:
-        """Execute a read-only analytical query; returns columns + rows."""
+    def query(self, sql: str, params: list[Any] | None = None) -> list[dict[str, Any]]:
+        """Synchronous query wrapper used by tests and direct callers."""
+        return self._query_sync(sql, params)["rows"]
+
+    async def aquery(self, sql: str, params: list[Any] | None = None) -> dict[str, Any]:
+        """Async query used by the app route layer."""
         async with self._lock:
             return await asyncio.to_thread(self._query_sync, sql, params)
 

@@ -14,6 +14,40 @@ from clients.prompt_loader import get_prompt_loader
 
 logger = structlog.get_logger(__name__)
 
+_DEFAULT_ANALYTICS_RULES: dict[str, Any] = {
+    "dialect": "duckdb",
+    "allowed_start_statements": ["select", "with"],
+    "forbidden_keywords": [
+        "insert",
+        "update",
+        "delete",
+        "drop",
+        "alter",
+        "create",
+        "truncate",
+        "grant",
+        "revoke",
+        "copy",
+        "attach",
+        "detach",
+        "export",
+        "import",
+        "pragma",
+        "call",
+        "vacuum",
+        "checkpoint",
+        "begin",
+        "commit",
+        "rollback",
+    ],
+    "max_rows": 200,
+    "notes": [
+        "Use date_trunc('day', ordered_at) for daily buckets and date_trunc('week', ...) / ('month', ...) for coarser ones.",
+        "amount is DECIMAL — cast with CAST(x AS DOUBLE) when averaging mixed metrics.",
+        "Refunded orders have status = 'refunded'.",
+    ],
+}
+
 _SQL_FENCE_RE = re.compile(r"```(?:sql)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
 
 
@@ -59,7 +93,7 @@ async def generate_sql(state: dict[str, Any], config: RunnableConfig) -> dict[st
     """
     inp = GenerateSQLInput.model_validate(state)
     context = inp.context or {}
-    rules = (context.get("rules") or {}).get("analytics", {})
+    rules = {**_DEFAULT_ANALYTICS_RULES, **((context.get("rules") or {}).get("analytics", {}))}
     ddl = (context.get("schemas") or {}).get("analytics_warehouse", "")
     template = (context.get("prompts") or {}).get("generate_sql", "analytics/generate_sql.md")
 

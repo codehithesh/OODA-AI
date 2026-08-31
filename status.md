@@ -218,6 +218,69 @@ make eval-local   # ✅ 18 eval cases with real LLM
 
 **The backend is complete, tested, documented, and ready for production deployment.** 🚀
 
+Ran terminal command:  open -a Docker
+
+## Docker install needed
+
+I checked the environment and the blocker is clear:
+
+- `make dev` fails with:
+  - `make: docker: No such file or directory`
+
+I also tried launching Docker Desktop, and it returned:
+
+- `Unable to find application named 'Docker'`
+
+So Docker is not installed on this machine yet.
+
+---
+
+## Install Docker on macOS
+
+### Option 1: via Homebrew
+If you have Homebrew installed:
+
+```bash
+brew install --cask docker
+```
+
+Then open Docker Desktop:
+
+```bash
+open -a Docker
+```
+
+If it prompts for install permission or starts the Docker engine, let it finish.
+
+### Option 2: official installer
+Download Docker Desktop for Mac from:
+https://www.docker.com/products/docker-desktop/
+
+Install it, open it, and wait until the Docker whale icon is running.
+
+---
+
+## Verify Docker is ready
+
+After install, run:
+
+```bash
+docker --version
+docker compose version
+```
+
+If both work, then your stack should be ready to start.
+
+---
+
+## Then run the project
+
+```bash
+cd /Users/hithesh/Documents/GitHub/OODA-Agent/multi-agent-backend
+make dev
+```
+
+
 ## Setup steps for local use
 
 ```bash
@@ -252,4 +315,14 @@ make dev
 
 # 4. Test one endpoint
 curl -s localhost:8000/v1/models | jq '.data[].id'
+```
+
+---
+
+```
+cd /Users/hithesh/Documents/GitHub/OODA-Agent/multi-agent-backend
+
+make test-local
+make eval-local
+make dev
 ```

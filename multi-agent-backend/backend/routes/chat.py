@@ -324,7 +324,7 @@ async def chat_completions(
         and result.output.get("generated_sql")
     ):
         try:
-            executed = await get_duckdb_client().query(result.output["generated_sql"])
+            executed = await get_duckdb_client().aquery(result.output["generated_sql"])
         except Exception as exc:
             executed = {"error": str(exc)}
             logger.warning("analytics_execution_failed", thread_id=thread_id, error=str(exc))

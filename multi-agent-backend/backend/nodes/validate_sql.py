@@ -72,15 +72,15 @@ def validate_sql(sql: str, rules: dict[str, Any] | None) -> ValidationResult:
     if not sql.strip():
         return ValidationResult(sql_valid=False, sql_validation_errors=["generated SQL is empty"])
 
-    first_word = _WORD_RE.search(stripped)
-    starters = [s.lower() for s in rules.get("allowed_start_statements", ["select", "with"])]
-    if not first_word or first_word.group(0).lower() not in starters:
-        errors.append(f"statement must start with {' or '.join(starters).upper()}")
-
     words = {w.lower() for w in _WORD_RE.findall(stripped)}
     forbidden = sorted(words.intersection({k.lower() for k in rules.get("forbidden_keywords", [])}))
     if forbidden:
         errors.append(f"forbidden keyword(s): {', '.join(forbidden)}")
+
+    first_word = _WORD_RE.search(stripped)
+    starters = [s.lower() for s in rules.get("allowed_start_statements", ["select", "with"])]
+    if not first_word or first_word.group(0).lower() not in starters:
+        errors.append(f"statement must start with {' or '.join(starters).upper()}")
 
     body = sql.strip()
     if body.endswith(";"):
