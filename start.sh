@@ -15,9 +15,12 @@
 #   7. Validates .env exists (copies .env.example if not, warns about keys)
 #   8. Checks required API keys are set in .env
 #   9. Wipes corrupt open-webui volume if detected
-#  10. Runs `make dev` (docker compose up --build -d)
+#  10. Runs `docker compose up --build -d --force-recreate` (reloads all config)
 #  11. Waits for all services to become healthy
 #  12. Prints live service URLs
+#
+# NOTE: --force-recreate ensures litellm_config.yaml and .env changes are
+#       always picked up. Use this script instead of `docker compose restart`.
 # =============================================================================
 
 set -euo pipefail
@@ -259,8 +262,8 @@ fi
 step "10/10  Starting the stack"
 cd "${PROJECT_DIR}"
 
-info "Running: make dev  (docker compose up --build -d)"
-make dev
+info "Running: docker compose up --build -d --force-recreate"
+docker compose up --build -d --force-recreate
 
 # ── 11. Wait for all services ─────────────────────────────────────────────────
 echo ""
