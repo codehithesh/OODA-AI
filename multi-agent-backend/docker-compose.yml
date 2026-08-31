@@ -82,7 +82,7 @@ services:
         condition: service_healthy
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.6.5
     restart: unless-stopped
     environment:
       OPENAI_API_BASE_URL: http://backend:8000/v1

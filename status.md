@@ -371,6 +371,15 @@ The volume deletion forces Open WebUI to create a brand new SQLite database on n
 
 After that, wait about 30-40 seconds for the `start_period` in the healthcheck to pass, then hit http://localhost:3000.
 
+if that doesnt work run these
+
+```
+cd /Users/hithesh/Documents/GitHub/OODA-Agent/multi-agent-backend
+docker compose down
+docker volume rm multi-agent-stack_open_webui_data
+docker compose up -d
+```
+
 ---
 
 
