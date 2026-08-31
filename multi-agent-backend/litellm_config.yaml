@@ -1,456 +1,405 @@
-# LiteLLM proxy configuration — one unified OpenAI-compatible endpoint for
-# every provider. The backend only ever talks to this proxy via
-# LITELLM_BASE_URL + DEFAULT_MODEL ("agent-default" below).
+# LiteLLM proxy configuration
 #
-# HOW TO ACTIVATE A PROVIDER
-# ───────────────────────────
-# 1. Set the corresponding key(s) in your .env file.
-# 2. Uncomment the model_list entries below for that provider.
-# 3. Make sure only ONE "agent-default" entry is active at a time.
-# 4. Restart LiteLLM:  docker compose restart litellm
+# Every model has a UNIQUE alias (model_name). The backend picks one via
+# DEFAULT_MODEL in .env. Set DEFAULT_MODEL to any alias below.
 #
-# Full provider list: https://docs.litellm.ai/docs/providers
+# Models whose provider key is blank in .env will return auth errors —
+# just leave those entries here; they won't affect other models.
+#
+# After editing: docker compose restart litellm
 
 model_list:
 
   # ════════════════════════════════════════════════════════════════════════════
-  # TIER 1 — MAJOR WESTERN PROVIDERS
+  # OPENROUTER  (one key → 200+ models, including free :free variants)
   # ════════════════════════════════════════════════════════════════════════════
 
-  # ── Anthropic ──────────────────────────────────────────────────────────────
-  # Keys: https://console.anthropic.com  |  Env: ANTHROPIC_API_KEY
-  - model_name: agent-default
+  - model_name: openrouter-llama-free          # free, no spend needed
     litellm_params:
-      model: anthropic/claude-haiku-3-5-20241022   # fast + cheap
+      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-deepseek-free       # free DeepSeek R1
+    litellm_params:
+      model: openrouter/deepseek/deepseek-r1:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-qwen-free           # free Qwen3 235B
+    litellm_params:
+      model: openrouter/qwen/qwen3-235b-a22b:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-gemma-free          # free Google Gemma 3
+    litellm_params:
+      model: openrouter/google/gemma-3-27b-it:free
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-claude-sonnet       # paid — Anthropic via OR
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-4
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-gpt4o               # paid — OpenAI via OR
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  - model_name: openrouter-kimi                # paid — Kimi K2 via OR
+    litellm_params:
+      model: openrouter/moonshotai/kimi-k2
+      api_key: os.environ/OPENROUTER_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # ANTHROPIC
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: anthropic-haiku
+    litellm_params:
+      model: anthropic/claude-haiku-3-5-20241022
       api_key: os.environ/ANTHROPIC_API_KEY
 
-  - model_name: agent-strong
+  - model_name: anthropic-sonnet
     litellm_params:
       model: anthropic/claude-sonnet-4-20250514
       api_key: os.environ/ANTHROPIC_API_KEY
 
-  # ── OpenAI ─────────────────────────────────────────────────────────────────
-  # Keys: https://platform.openai.com/api-keys  |  Env: OPENAI_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: openai/gpt-4o-mini
-  #     api_key: os.environ/OPENAI_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: openai/gpt-4o
-  #     api_key: os.environ/OPENAI_API_KEY
-
-  # - model_name: agent-reasoning
-  #   litellm_params:
-  #     model: openai/o3
-  #     api_key: os.environ/OPENAI_API_KEY
-
-  # ── xAI (Grok) ─────────────────────────────────────────────────────────────
-  # Keys: https://console.x.ai  |  Env: XAI_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: xai/grok-3-mini
-  #     api_key: os.environ/XAI_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: xai/grok-4.5
-  #     api_key: os.environ/XAI_API_KEY
-
-  # ── Google Gemini (AI Studio) ──────────────────────────────────────────────
-  # Keys: https://aistudio.google.com/app/apikey  |  Env: GEMINI_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: gemini/gemini-2.0-flash
-  #     api_key: os.environ/GEMINI_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: gemini/gemini-2.5-pro
-  #     api_key: os.environ/GEMINI_API_KEY
-
-  # ── Google Vertex AI ───────────────────────────────────────────────────────
-  # Env: GOOGLE_APPLICATION_CREDENTIALS (service account JSON path)
-  #      VERTEXAI_PROJECT, VERTEXAI_LOCATION
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: vertex_ai/gemini-2.0-flash-001
-  #     vertex_project: os.environ/VERTEXAI_PROJECT
-  #     vertex_location: os.environ/VERTEXAI_LOCATION
-
-  # ── Groq (ultra-fast inference) ────────────────────────────────────────────
-  # Keys: https://console.groq.com/keys  |  Env: GROQ_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: groq/llama-3.3-70b-versatile
-  #     api_key: os.environ/GROQ_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: groq/llama-3.1-405b-reasoning
-  #     api_key: os.environ/GROQ_API_KEY
-
-  # ── Mistral AI ─────────────────────────────────────────────────────────────
-  # Keys: https://console.mistral.ai/api-keys  |  Env: MISTRAL_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: mistral/mistral-small-latest
-  #     api_key: os.environ/MISTRAL_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: mistral/mistral-large-latest
-  #     api_key: os.environ/MISTRAL_API_KEY
-
-  # - model_name: agent-reasoning
-  #   litellm_params:
-  #     model: mistral/magistral-medium-2506
-  #     api_key: os.environ/MISTRAL_API_KEY
-
-  # ── Perplexity AI ──────────────────────────────────────────────────────────
-  # Keys: https://www.perplexity.ai/settings/api  |  Env: PERPLEXITYAI_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: perplexity/llama-3.1-sonar-small-128k-online
-  #     api_key: os.environ/PERPLEXITYAI_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: perplexity/llama-3.1-sonar-large-128k-online
-  #     api_key: os.environ/PERPLEXITYAI_API_KEY
-
-  # ── Cohere ─────────────────────────────────────────────────────────────────
-  # Keys: https://dashboard.cohere.com/api-keys  |  Env: COHERE_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: cohere_chat/command-r
-  #     api_key: os.environ/COHERE_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: cohere_chat/command-r-plus
-  #     api_key: os.environ/COHERE_API_KEY
-
-  # ── Cerebras ───────────────────────────────────────────────────────────────
-  # Keys: https://cloud.cerebras.ai  |  Env: CEREBRAS_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: cerebras/llama3.1-70b
-  #     api_key: os.environ/CEREBRAS_API_KEY
-
-  # ── SambaNova ──────────────────────────────────────────────────────────────
-  # Keys: https://cloud.sambanova.ai  |  Env: SAMBANOVA_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: sambanova/Meta-Llama-3.3-70B-Instruct
-  #     api_key: os.environ/SAMBANOVA_API_KEY
-
-  # ── Fireworks AI ───────────────────────────────────────────────────────────
-  # Keys: https://fireworks.ai/account/api-keys  |  Env: FIREWORKS_AI_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: fireworks_ai/accounts/fireworks/models/llama-v3p3-70b-instruct
-  #     api_key: os.environ/FIREWORKS_AI_API_KEY
-
-  # ── Together AI ────────────────────────────────────────────────────────────
-  # Keys: https://api.together.xyz/settings/api-keys  |  Env: TOGETHER_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: together_ai/meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
-  #     api_key: os.environ/TOGETHER_API_KEY
-
-  # ── DeepInfra ──────────────────────────────────────────────────────────────
-  # Keys: https://deepinfra.com/dash  |  Env: DEEPINFRA_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: deepinfra/meta-llama/Meta-Llama-3.1-70B-Instruct
-  #     api_key: os.environ/DEEPINFRA_API_KEY
-
-  # ── Hyperbolic ─────────────────────────────────────────────────────────────
-  # Keys: https://app.hyperbolic.xyz  |  Env: HYPERBOLIC_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: hyperbolic/meta-llama/Meta-Llama-3.1-70B-Instruct
-  #     api_key: os.environ/HYPERBOLIC_API_KEY
-
-  # ── Replicate ──────────────────────────────────────────────────────────────
-  # Keys: https://replicate.com/account/api-tokens  |  Env: REPLICATE_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: replicate/meta/meta-llama-3-70b-instruct
-  #     api_key: os.environ/REPLICATE_API_KEY
-
-  # ── Hugging Face Inference ─────────────────────────────────────────────────
-  # Keys: https://huggingface.co/settings/tokens  |  Env: HUGGINGFACE_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: huggingface/meta-llama/Meta-Llama-3.1-70B-Instruct
-  #     api_key: os.environ/HUGGINGFACE_API_KEY
-
-  # ── Nvidia NIM ─────────────────────────────────────────────────────────────
-  # Keys: https://build.nvidia.com  |  Env: NVIDIA_NIM_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: nvidia_nim/meta/llama-3.1-70b-instruct
-  #     api_key: os.environ/NVIDIA_NIM_API_KEY
-
-  # ── Lambda AI ──────────────────────────────────────────────────────────────
-  # Keys: https://lambda.ai  |  Env: LAMBDA_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: lambda_ai/llama3.1-70b-instruct-lambda
-  #     api_key: os.environ/LAMBDA_API_KEY
-
-
   # ════════════════════════════════════════════════════════════════════════════
-  # TIER 2 — CHINESE / ASIAN PROVIDERS
+  # OPENAI
   # ════════════════════════════════════════════════════════════════════════════
 
-  # ── DeepSeek ───────────────────────────────────────────────────────────────
-  # Keys: https://platform.deepseek.com  |  Env: DEEPSEEK_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: deepseek/deepseek-chat          # DeepSeek-V3
-  #     api_key: os.environ/DEEPSEEK_API_KEY
+  - model_name: openai-gpt4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
 
-  # - model_name: agent-reasoning
-  #   litellm_params:
-  #     model: deepseek/deepseek-reasoner      # DeepSeek-R1
-  #     api_key: os.environ/DEEPSEEK_API_KEY
+  - model_name: openai-gpt4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
 
-  # ── Moonshot AI / Kimi ─────────────────────────────────────────────────────
-  # Keys: https://platform.moonshot.ai  |  Env: MOONSHOT_API_KEY
-  # Global base: https://api.moonshot.ai/v1
-  # China  base: https://api.moonshot.cn/v1  (set MOONSHOT_API_BASE to switch)
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: moonshot/moonshot-v1-8k
-  #     api_key: os.environ/MOONSHOT_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: moonshot/kimi-k2.5              # vision + reasoning, 256k ctx
-  #     api_key: os.environ/MOONSHOT_API_KEY
-
-  # ── Alibaba / Qwen (DashScope) ─────────────────────────────────────────────
-  # Keys: https://dashscope.console.aliyun.com  |  Env: DASHSCOPE_API_KEY
-  # Set DASHSCOPE_API_BASE for region:
-  #   International: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
-  #   China:         https://dashscope.aliyuncs.com/compatible-mode/v1
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: dashscope/qwen-turbo
-  #     api_key: os.environ/DASHSCOPE_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: dashscope/qwen-max
-  #     api_key: os.environ/DASHSCOPE_API_KEY
-
-  # - model_name: agent-reasoning
-  #   litellm_params:
-  #     model: dashscope/qwen3-235b-a22b       # Qwen3 flagship MoE
-  #     api_key: os.environ/DASHSCOPE_API_KEY
-
-  # ── Zhipu AI / GLM (Z.AI) ─────────────────────────────────────────────────
-  # Keys: https://open.bigmodel.cn  |  Env: ZAI_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: zai/glm-4-flash
-  #     api_key: os.environ/ZAI_API_KEY
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: zai/glm-4-plus
-  #     api_key: os.environ/ZAI_API_KEY
-
-  # ── MiniMax ────────────────────────────────────────────────────────────────
-  # Keys: https://platform.minimax.io  |  Env: MINIMAX_API_KEY
-  # api_base required (see docs.litellm.ai/docs/providers/minimax)
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: minimax/MiniMax-M2.1-lightning  # fast tier
-  #     api_key: os.environ/MINIMAX_API_KEY
-  #     api_base: https://api.minimax.io/v1
-
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: minimax/MiniMax-M2.1            # reasoning + agentic
-  #     api_key: os.environ/MINIMAX_API_KEY
-  #     api_base: https://api.minimax.io/v1
-
-  # ── Volcengine / ByteDance (Doubao / Skylark) ──────────────────────────────
-  # Keys: https://console.volcengine.com  |  Env: VOLCENGINE_API_KEY
-  # Endpoint IDs from your Volcengine console (ep-xxxxxxxx)
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: volcengine/doubao-pro-4k
-  #     api_key: os.environ/VOLCENGINE_API_KEY
-
-  # ── Baidu Qianfan (ERNIE) ──────────────────────────────────────────────────
-  # Env: QIANFAN_AK (API Key), QIANFAN_SK (Secret Key)
-  # Keys: https://console.bce.baidu.com/qianfan
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: qianfan/ERNIE-4.0-8K
-  #     api_key: os.environ/QIANFAN_AK
-  #     api_base: https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/
-
-  # ── Tencent Hunyuan ────────────────────────────────────────────────────────
-  # Env: TENCENTCLOUD_SECRET_ID, TENCENTCLOUD_SECRET_KEY
-  # Keys: https://console.cloud.tencent.com
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: tencent/hunyuan-pro
-  #     api_key: os.environ/TENCENTCLOUD_SECRET_ID
-
-  # ── ModelScope (Alibaba open-source hub) ───────────────────────────────────
-  # Keys: https://modelscope.cn  |  Env: MODELSCOPE_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: modelscope/qwen2.5-72b-instruct
-  #     api_key: os.environ/MODELSCOPE_API_KEY
-
+  - model_name: openai-o3
+    litellm_params:
+      model: openai/o3
+      api_key: os.environ/OPENAI_API_KEY
 
   # ════════════════════════════════════════════════════════════════════════════
-  # TIER 3 — CLOUD PROVIDER MANAGED AI
+  # XAI / GROK
   # ════════════════════════════════════════════════════════════════════════════
 
-  # ── AWS Bedrock ────────────────────────────────────────────────────────────
-  # Env: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION_NAME
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: bedrock/anthropic.claude-3-5-haiku-20241022-v1:0
-  #     aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-  #     aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-  #     aws_region_name: os.environ/AWS_REGION_NAME
+  - model_name: xai-grok-mini
+    litellm_params:
+      model: xai/grok-3-mini
+      api_key: os.environ/XAI_API_KEY
 
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: bedrock/anthropic.claude-sonnet-4-20250514-v1:0
-  #     aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-  #     aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-  #     aws_region_name: os.environ/AWS_REGION_NAME
-
-  # ── Azure OpenAI ───────────────────────────────────────────────────────────
-  # Env: AZURE_API_KEY, AZURE_API_BASE, AZURE_API_VERSION
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: azure/<your-gpt4o-mini-deployment>
-  #     api_key: os.environ/AZURE_API_KEY
-  #     api_base: os.environ/AZURE_API_BASE
-  #     api_version: os.environ/AZURE_API_VERSION
-
-  # ── Azure AI (Serverless, GitHub Models, etc.) ─────────────────────────────
-  # Env: AZURE_AI_API_KEY, AZURE_AI_API_BASE
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: azure_ai/Meta-Llama-3.1-70B-Instruct
-  #     api_key: os.environ/AZURE_AI_API_KEY
-  #     api_base: os.environ/AZURE_AI_API_BASE
-
-  # ── Google Vertex AI ───────────────────────────────────────────────────────
-  # Already shown above under Tier 1.
-
-  # ── IBM Watsonx ────────────────────────────────────────────────────────────
-  # Env: WATSONX_API_KEY, WATSONX_URL, WATSONX_PROJECT_ID
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: watsonx/ibm/granite-13b-chat-v2
-  #     api_key: os.environ/WATSONX_API_KEY
-  #     watsonx_url: os.environ/WATSONX_URL
-  #     watsonx_project_id: os.environ/WATSONX_PROJECT_ID
-
-  # ── Databricks ─────────────────────────────────────────────────────────────
-  # Env: DATABRICKS_API_KEY, DATABRICKS_API_BASE
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: databricks/databricks-meta-llama-3-1-70b-instruct
-  #     api_key: os.environ/DATABRICKS_API_KEY
-  #     api_base: os.environ/DATABRICKS_API_BASE
-
+  - model_name: xai-grok
+    litellm_params:
+      model: xai/grok-4.5
+      api_key: os.environ/XAI_API_KEY
 
   # ════════════════════════════════════════════════════════════════════════════
-  # TIER 4 — AGGREGATOR / MULTI-MODEL GATEWAYS
+  # GOOGLE GEMINI  (free tier: 1,500 req/day, no credit card)
   # ════════════════════════════════════════════════════════════════════════════
 
-  # ── OpenRouter (200+ models, one key) ──────────────────────────────────────
-  # Keys: https://openrouter.ai/keys  |  Env: OPENROUTER_API_KEY
-  # Browse models: https://openrouter.ai/models
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: openrouter/meta-llama/llama-3.3-70b-instruct
-  #     api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: gemini-flash                   # free tier available
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
 
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: openrouter/anthropic/claude-sonnet-4
-  #     api_key: os.environ/OPENROUTER_API_KEY
+  - model_name: gemini-flash-25                # free tier available
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
 
-  # - model_name: agent-reasoning
-  #   litellm_params:
-  #     model: openrouter/deepseek/deepseek-r1
-  #     api_key: os.environ/OPENROUTER_API_KEY
-
-  # ── AI/ML API (aggregator) ─────────────────────────────────────────────────
-  # Keys: https://aimlapi.com  |  Env: AIML_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: aiml/meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
-  #     api_key: os.environ/AIML_API_KEY
-
-  # ── Novita AI ──────────────────────────────────────────────────────────────
-  # Keys: https://novita.ai  |  Env: NOVITA_API_KEY
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: novita/meta-llama/llama-3.1-70b-instruct
-  #     api_key: os.environ/NOVITA_API_KEY
-
+  - model_name: gemini-pro
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
 
   # ════════════════════════════════════════════════════════════════════════════
-  # TIER 5 — LOCAL / SELF-HOSTED
+  # GROQ  (free forever: 14,400 req/day, no credit card)
   # ════════════════════════════════════════════════════════════════════════════
 
-  # ── Ollama (no API key needed) ─────────────────────────────────────────────
-  # Requires: Ollama running locally → https://ollama.com
-  #   ollama pull llama3.2   (or any model)
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: ollama/llama3.2
-  #     api_base: http://host.docker.internal:11434
+  - model_name: groq-llama                     # free
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
 
-  # - model_name: agent-strong
-  #   litellm_params:
-  #     model: ollama/qwen2.5:72b
-  #     api_base: http://host.docker.internal:11434
+  - model_name: groq-llama-fast                # free, smaller/faster
+    litellm_params:
+      model: groq/llama-3.1-8b-instant
+      api_key: os.environ/GROQ_API_KEY
 
-  # ── LM Studio ─────────────────────────────────────────────────────────────
-  # Requires: LM Studio running locally → https://lmstudio.ai
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: lm_studio/<model-identifier-from-lm-studio>
-  #     api_base: http://host.docker.internal:1234
+  # ════════════════════════════════════════════════════════════════════════════
+  # MISTRAL
+  # ════════════════════════════════════════════════════════════════════════════
 
-  # ── vLLM (self-hosted) ─────────────────────────────────────────────────────
-  # Requires: vLLM server running
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: hosted_vllm/meta-llama/Llama-3.1-70B-Instruct
-  #     api_base: http://your-vllm-host:8000
+  - model_name: mistral-small
+    litellm_params:
+      model: mistral/mistral-small-latest
+      api_key: os.environ/MISTRAL_API_KEY
 
-  # ── Docker Model Runner ────────────────────────────────────────────────────
-  # Requires: Docker Desktop 4.40+ with model runner enabled
-  # - model_name: agent-default
-  #   litellm_params:
-  #     model: docker_model_runner/ai/llama3.2:3B-Q8_0
-  #     api_base: http://model-runner.docker.internal/engines/v1
+  - model_name: mistral-large
+    litellm_params:
+      model: mistral/mistral-large-latest
+      api_key: os.environ/MISTRAL_API_KEY
 
+  - model_name: mistral-magistral              # reasoning model
+    litellm_params:
+      model: mistral/magistral-medium-2506
+      api_key: os.environ/MISTRAL_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # PERPLEXITY  (online / web-search models)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: perplexity-online
+    litellm_params:
+      model: perplexity/llama-3.1-sonar-large-128k-online
+      api_key: os.environ/PERPLEXITYAI_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # COHERE
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: cohere-command-r
+    litellm_params:
+      model: cohere_chat/command-r
+      api_key: os.environ/COHERE_API_KEY
+
+  - model_name: cohere-command-r-plus
+    litellm_params:
+      model: cohere_chat/command-r-plus
+      api_key: os.environ/COHERE_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # CEREBRAS  (free tier available)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: cerebras-llama                 # free tier
+    litellm_params:
+      model: cerebras/llama3.1-70b
+      api_key: os.environ/CEREBRAS_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # SAMBANOVA  (free forever)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: sambanova-llama                # free
+    litellm_params:
+      model: sambanova/Meta-Llama-3.3-70B-Instruct
+      api_key: os.environ/SAMBANOVA_API_KEY
+
+  - model_name: sambanova-llama-405b           # free
+    litellm_params:
+      model: sambanova/Meta-Llama-3.1-405B-Instruct
+      api_key: os.environ/SAMBANOVA_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # FIREWORKS AI
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: fireworks-llama
+    litellm_params:
+      model: fireworks_ai/accounts/fireworks/models/llama-v3p3-70b-instruct
+      api_key: os.environ/FIREWORKS_AI_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # TOGETHER AI
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: together-llama
+    litellm_params:
+      model: together_ai/meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
+      api_key: os.environ/TOGETHER_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # DEEPINFRA
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: deepinfra-llama
+    litellm_params:
+      model: deepinfra/meta-llama/Meta-Llama-3.1-70B-Instruct
+      api_key: os.environ/DEEPINFRA_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # NVIDIA NIM  (free credits on signup)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: nvidia-llama
+    litellm_params:
+      model: nvidia_nim/meta/llama-3.1-70b-instruct
+      api_key: os.environ/NVIDIA_NIM_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # HUGGING FACE
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: hf-llama
+    litellm_params:
+      model: huggingface/meta-llama/Meta-Llama-3.1-70B-Instruct
+      api_key: os.environ/HUGGINGFACE_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # DEEPSEEK  (5M free tokens on signup)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: deepseek-chat                  # DeepSeek-V3
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+  - model_name: deepseek-reasoner              # DeepSeek-R1
+    litellm_params:
+      model: deepseek/deepseek-reasoner
+      api_key: os.environ/DEEPSEEK_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # MOONSHOT / KIMI
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: kimi-default
+    litellm_params:
+      model: moonshot/moonshot-v1-8k
+      api_key: os.environ/MOONSHOT_API_KEY
+
+  - model_name: kimi-k2
+    litellm_params:
+      model: moonshot/kimi-k2.5
+      api_key: os.environ/MOONSHOT_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # ALIBABA / QWEN (DASHSCOPE)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: qwen-turbo
+    litellm_params:
+      model: dashscope/qwen-turbo
+      api_key: os.environ/DASHSCOPE_API_KEY
+
+  - model_name: qwen-max
+    litellm_params:
+      model: dashscope/qwen-max
+      api_key: os.environ/DASHSCOPE_API_KEY
+
+  - model_name: qwen3-235b
+    litellm_params:
+      model: dashscope/qwen3-235b-a22b
+      api_key: os.environ/DASHSCOPE_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # ZHIPU AI / GLM  (Z.AI)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: glm-flash                      # fast + cheap
+    litellm_params:
+      model: zai/glm-4-flash
+      api_key: os.environ/ZAI_API_KEY
+
+  - model_name: glm-plus
+    litellm_params:
+      model: zai/glm-4-plus
+      api_key: os.environ/ZAI_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # MINIMAX
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: minimax-fast
+    litellm_params:
+      model: minimax/MiniMax-M2.1-lightning
+      api_key: os.environ/MINIMAX_API_KEY
+      api_base: https://api.minimax.io/v1
+
+  - model_name: minimax-pro
+    litellm_params:
+      model: minimax/MiniMax-M2.1
+      api_key: os.environ/MINIMAX_API_KEY
+      api_base: https://api.minimax.io/v1
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # VOLCENGINE / BYTEDANCE (DOUBAO)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: doubao-pro
+    litellm_params:
+      model: volcengine/doubao-pro-4k
+      api_key: os.environ/VOLCENGINE_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # MODELSCOPE
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: modelscope-qwen
+    litellm_params:
+      model: modelscope/qwen2.5-72b-instruct
+      api_key: os.environ/MODELSCOPE_API_KEY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # AWS BEDROCK
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: bedrock-claude-haiku
+    litellm_params:
+      model: bedrock/anthropic.claude-3-5-haiku-20241022-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+  - model_name: bedrock-claude-sonnet
+    litellm_params:
+      model: bedrock/anthropic.claude-sonnet-4-20250514-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # AZURE OPENAI
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: azure-gpt4o
+    litellm_params:
+      model: azure/gpt-4o
+      api_key: os.environ/AZURE_API_KEY
+      api_base: os.environ/AZURE_API_BASE
+      api_version: os.environ/AZURE_API_VERSION
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # IBM WATSONX
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: watsonx-granite
+    litellm_params:
+      model: watsonx/ibm/granite-13b-chat-v2
+      api_key: os.environ/WATSONX_API_KEY
+      watsonx_url: os.environ/WATSONX_URL
+      watsonx_project_id: os.environ/WATSONX_PROJECT_ID
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # LOCAL — OLLAMA  (no API key, must be running on host)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: ollama-llama
+    litellm_params:
+      model: ollama/llama3.2
+      api_base: http://host.docker.internal:11434
+
+  - model_name: ollama-qwen
+    litellm_params:
+      model: ollama/qwen2.5:7b
+      api_base: http://host.docker.internal:11434
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # LOCAL — LM STUDIO  (no API key, must be running on host)
+  # ════════════════════════════════════════════════════════════════════════════
+
+  - model_name: lmstudio-local
+    litellm_params:
+      model: lm_studio/loaded-model
+      api_base: http://host.docker.internal:1234
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
 
 litellm_settings:
   drop_params: true
-  # exposes the x-litellm-response-cost header the backend uses for cost tracking
   return_response_headers: true

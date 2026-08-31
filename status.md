@@ -382,6 +382,106 @@ docker compose up -d
 
 ---
 
+LiteLLM support:
+
+Here's what's now covered across 5 tiers in `litellm_config.yaml`:
+
+**Tier 1 — Major Western**
+Anthropic, OpenAI, xAI/Grok, Google Gemini, Google Vertex AI, Groq, Mistral (+ Magistral reasoning), Perplexity, Cohere, Cerebras, SambaNova, Fireworks AI, Together AI, DeepInfra, Hyperbolic, Replicate, Hugging Face, Nvidia NIM, Lambda AI
+
+**Tier 2 — Chinese / Asian**
+DeepSeek (V3 + R1 reasoning), Moonshot/Kimi (kimi-k2.5), Alibaba/Qwen via DashScope (incl. Qwen3), Zhipu AI/GLM via Z.AI, MiniMax (M2.1), Volcengine/ByteDance (Doubao), Baidu Qianfan (ERNIE), Tencent Hunyuan, ModelScope
+
+**Tier 3 — Cloud-Managed**
+AWS Bedrock, Azure OpenAI, Azure AI (serverless/GitHub Models), Google Vertex AI, IBM Watsonx, Databricks
+
+**Tier 4 — Aggregators**
+OpenRouter (200+ models), AI/ML API, Novita AI
+
+**Tier 5 — Local / Self-hosted**
+Ollama, LM Studio, vLLM, Docker Model Runner
+
+To switch providers: uncomment the block you want in `litellm_config.yaml`, add the key to `.env`, and run `docker compose restart litellm`.
+
+Based on the search results I already have, here's the current picture (as of August 2026):
+
+---
+
+## Genuinely Free — No Credit Card, No Expiry
+
+| Provider | Free Tier | Models | Get Key |
+|---|---|---|---|
+| **Groq** | 30 RPM, 14,400 req/day, forever | Llama 3.3 70B, Llama 3.1 8B, Gemma 2 | console.groq.com |
+| **Google Gemini** | 15 RPM, 1,500 req/day | Gemini 2.0 Flash, 2.5 Flash | aistudio.google.com |
+| **OpenRouter** | 28+ models at $0/token (`:free` suffix) | Llama, Qwen, DeepSeek, Gemma, Mistral | openrouter.ai |
+| **SambaNova** | Free forever tier | Llama 3.3 70B, Llama 3.1 405B | cloud.sambanova.ai |
+| **Cerebras** | Free tier available | Llama 3.1 70B | cloud.cerebras.ai |
+| **Hugging Face** | Free inference API | Many open models | huggingface.co/settings/tokens |
+| **Cloudflare Workers AI** | Free tier (10k req/day) | Llama, Mistral, Gemma | dash.cloudflare.com |
+| **Nvidia NIM** | Free credits on signup | Llama, Mistral, Nemotron | build.nvidia.com |
+
+---
+
+## Free Credits on Signup (One-Time, Expires)
+
+| Provider | Free Credit | Notes |
+|---|---|---|
+| **DeepSeek** | 5M tokens on signup | No credit card needed |
+| **Mistral** | Free tier + trial credits | Some models free forever |
+| **Moonshot / Kimi** | Trial credits on signup | Paid after that |
+| **MiniMax** | Trial credits | Paid after that |
+| **Dashscope / Qwen** | Free trial quota | Alibaba Cloud account needed |
+| **Zhipu / GLM (ZAI)** | Free trial credits | China account preferred |
+| **Fireworks AI** | $1 credit on signup | No credit card |
+| **Together AI** | $1 credit on signup | No credit card |
+| **Novita AI** | Small free credits | No credit card |
+
+---
+
+## Best for Testing This Stack Right Now
+
+For this project (agent-heavy, multi-turn, streaming) the best no-cost options ranked:
+
+1. **Groq** — easiest, no card, fast, generous limits, works perfectly with LiteLLM. Start here.
+2. **Google Gemini** (2.0 Flash) — 1M token context, 1,500 req/day free, no card.
+3. **OpenRouter** — one key unlocks 28+ free models. Use `openrouter/meta-llama/llama-3.3-70b-instruct:free` as `agent-default`.
+4. **DeepSeek** — 5M free tokens is enough for serious testing.
+
+To switch to Groq right now, just add to your `.env`:
+```
+GROQ_API_KEY=gsk_...
+```
+
+Then in `litellm_config.yaml`, comment out the Anthropic block and uncomment:
+```yaml
+- model_name: agent-default
+  litellm_params:
+    model: groq/llama-3.3-70b-versatile
+    api_key: os.environ/GROQ_API_KEY
+```
+
+Then `docker compose restart litellm`.
+
+---
+
+Unique aliases for every model in the config, and all keys organized in `.env`:
+
+**The core problem** was having multiple `agent-default` entries — LiteLLM only uses the first one. Now every model has a unique alias like `groq-llama`, `gemini-flash`, `deepseek-chat`, etc.
+
+**To switch models**, just change one line in `.env`:
+```
+DEFAULT_MODEL=groq-llama
+```
+...and restart: `docker compose restart litellm`
+
+**Your OpenRouter key** is already set and `DEFAULT_MODEL=openrouter-llama-free` so it'll work immediately. Run:
+```bash
+cd /Users/hithesh/Documents/GitHub/OODA-Agent/multi-agent-backend
+docker compose restart litellm
+```
+
+---
+
 
 ## Setup steps for local use
 
