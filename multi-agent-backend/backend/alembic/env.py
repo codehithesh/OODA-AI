@@ -34,8 +34,11 @@ target_metadata = Base.metadata
 
 
 def _sync_url() -> str:
-    """psycopg-style URL for offline rendering."""
-    return get_settings().database_url.replace("+asyncpg", "")
+    """psycopg3-style URL for sync rendering (Alembic doesn't support async)."""
+    # Use psycopg (v3) as the sync driver for migrations
+    # since asyncpg is async-only and psycopg2 is not installed
+    url = get_settings().database_url.replace("+asyncpg", "+psycopg")
+    return url
 
 
 def run_migrations_offline() -> None:
@@ -62,13 +65,16 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    """Run migrations with an async engine (NullPool — never shared with the app)."""
+    """Run migrations with an async engine using asyncpg (NullPool — never shared with the app)."""
+    # Keep the asyncpg URL for async migrations
+    async_url = get_settings().database_url
     connectable = async_engine_from_config(
-        {"sqlalchemy.url": _sync_url()},
+        {"sqlalchemy.url": async_url},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
     async with connectable.connect() as connection:
+        # Need to run the sync migration runner in a thread for asyncpg
         await connection.run_sync(do_run_migrations)
     await connectable.dispose()
 

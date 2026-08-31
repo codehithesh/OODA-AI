@@ -45,10 +45,11 @@ services:
     ports:
       - "4000:4000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 4000))"]
       interval: 10s
       timeout: 5s
       retries: 12
+      start_period: 15s
 
   backend:
     build:
@@ -64,6 +65,7 @@ services:
       LITELLM_API_KEY: ${LITELLM_MASTER_KEY:-sk-local-litellm-master}
       CONTEXT_DIR: /app/context
       DUCKDB_PATH: /app/data/analytics.duckdb
+      UV_NO_CACHE: "1"
     ports:
       - "8000:8000"
     volumes:
@@ -78,12 +80,6 @@ services:
         condition: service_healthy
       litellm:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 40s
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -95,9 +91,6 @@ services:
       - "3000:8080"
     volumes:
       - open_webui_data:/app/backend/data
-    depends_on:
-      backend:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5)"]
       interval: 15s

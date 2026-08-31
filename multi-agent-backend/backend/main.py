@@ -90,17 +90,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("startup_begin", environment=settings.environment)
 
     # 1. database + migrations
+    logger.info("step_database_check_starting")
     db_ok = await check_database_connection()
-    if db_ok:
-        if settings.run_migrations_on_start:
-            await run_migrations()
-            logger.info("migrations_applied")
-    elif settings.is_production:
-        raise RuntimeError("PostgreSQL is unreachable — refusing to start in production")
-    else:
-        logger.warning("database_unavailable_degraded_mode")
+    logger.info("step_database_check_complete", db_ok=db_ok)
+    try:
+        if db_ok:
+            if settings.run_migrations_on_start:
+                logger.info("migrations_starting")
+                await run_migrations()
+                logger.info("migrations_applied")
+        elif settings.is_production:
+            raise RuntimeError("PostgreSQL is unreachable — refusing to start in production")
+        else:
+            logger.warning("database_unavailable_degraded_mode")
+        logger.info("database_step_complete")
+    except Exception as e:
+        logger.error("database_step_failed", error=str(e), exc_info=True)
+        if settings.is_production:
+            raise
 
     # 2. LangGraph checkpointer (PostgreSQL checkpoints; fallback MemorySaver)
+    logger.info("step_checkpointer_starting")
     app.state.checkpointer_cm: Any | None = None
     app.state.checkpointer: Any | None = None
     if db_ok:
@@ -122,16 +132,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
         app.state.checkpointer = MemorySaver()
         logger.warning("checkpointer_memory_fallback")
+    logger.info("step_checkpointer_complete")
 
     # 3. embedded DuckDB: schema + deterministic demo data from context/
+    logger.info("step_duckdb_starting")
     try:
         await get_duckdb_client().seed_from_context(settings.context_path)
     except Exception as exc:
         logger.warning("duckdb_seed_failed", error=str(exc))
+    logger.info("step_duckdb_complete")
 
     # 4. redis + litellm probes (non-fatal)
+    logger.info("step_redis_check_starting")
     redis_ok = await get_redis_client().ping()
+    logger.info("step_redis_check_complete", redis_ok=redis_ok)
+    logger.info("step_litellm_check_starting")
     litellm_ok = await get_default_litellm_client().health()
+    logger.info("step_litellm_check_complete", litellm_ok=litellm_ok)
     logger.info(
         "dependencies",
         database=db_ok,
@@ -139,8 +156,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         litellm=litellm_ok,
     )
 
-    # 5. context snapshot for the current commit
-    if db_ok:
+    # 5. context snapshot for the current commit (skipped in development to accelerate startup)
+    if db_ok and settings.is_production:
         try:
             async with AsyncSessionLocal() as session:
                 manifest = await GitContextClient().amanifest()

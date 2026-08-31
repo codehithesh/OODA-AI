@@ -280,6 +280,67 @@ cd /Users/hithesh/Documents/GitHub/OODA-Agent/multi-agent-backend
 make dev
 ```
 
+---
+
+## ✅ Verified blocker
+
+I checked the environment and the failure is not in the app code. The evidence is direct:
+
+- `docker --version` works
+- `docker compose version` fails with: `docker: unknown command: docker compose`
+- `docker info` fails with: `failed to connect to the docker API at unix:///var/run/docker.sock`
+- `make dev` in `Makefile` is therefore failing before the backend can start
+
+This means the Docker Desktop daemon is not running, and the Compose plugin is not active for the current shell.
+
+---
+
+## What to do right now
+
+Run these exactly:
+
+```bash
+open -a Docker
+```
+
+Then wait 30–60 seconds and verify:
+
+```bash
+docker info
+docker compose version
+```
+
+If Docker Desktop starts normally, then run:
+
+```bash
+cd /Users/hithesh/Documents/GitHub/OODA-Agent/multi-agent-backend
+make dev
+```
+
+If `docker compose version` still says “unknown command”, the Docker app is installed but the Compose plugin is not attached properly. In that case:
+
+```bash
+ls -l /Applications/Docker.app/Contents/Resources/cli-plugins
+```
+
+If the plugin is present there, re-launch Docker Desktop and retry. If it still fails, reinstall Docker Desktop from the official installer and start it once before retrying.
+
+> The project itself is no longer the main issue. The remaining blocker is the local Docker runtime, which is exactly why error.md shows the stack failing on PostgreSQL/Redis/LiteLLM startup.
+
+---
+
+## Expected result
+
+Once Docker is live:
+
+- `docker info` returns daemon info
+- `docker compose version` works
+- `make dev` can run the stack
+- then `make eval-local` can proceed
+
+
+---
+
 
 ## Setup steps for local use
 
