@@ -1,6 +1,6 @@
 <p align="center">
     <picture>
-      <img src="https://github.com/codehithesh/OODA-Agent/blob/main/assets/ooda_logo.jpeg" height="320" alt="OODA AI logo" />
+      <img src="https://github.com/codehithesh/OODA-Agent/blob/main/assets/ooda_ai_logo.jpeg" alt="OODA AI logo" />
     </picture>
 </p>
 
