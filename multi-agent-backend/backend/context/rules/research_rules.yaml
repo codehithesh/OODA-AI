@@ -1,8 +1,0 @@
-# Research agent rules — peer review loop budget and evidence thresholds.
-peer_count: 3
-max_generations: 2
-consensus_threshold: 0.6
-min_evidence_per_peer: 1
-scoring:
-  evidence_weight: 0.6
-  confidence_calibration_weight: 0.4
