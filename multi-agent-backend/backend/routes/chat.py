@@ -206,91 +206,115 @@ def _format_pending_approval(result: AgentRunResult) -> str:
 
 
 def _format_eda(output: dict[str, Any]) -> str:
-    """Format the EDA analysis result as rich markdown for chat."""
-    lines = ["## Analysis Results", ""]
+    """Format the EDA analysis result as rich markdown for chat.
 
-    # Business question + plan
+    Charts are rendered as self-contained inline HTML using Plotly.js so
+    Open WebUI displays them directly in the conversation.
+    """
+    lines: list[str] = []
+
     question = output.get("business_question", "")
     plan = output.get("analysis_plan", "")
+    metrics = output.get("metrics") or {}
+    findings = output.get("findings") or []
+    recommendations = output.get("recommendations") or []
+    visualizations = output.get("visualizations") or []
+    fused = output.get("fused_context")
+    failure_modes = output.get("failure_modes") or []
+
+    # ── Header ───────────────────────────────────────────────────────────────
+    lines += ["## 📊 EDA Results", ""]
     if question:
         lines += [f"**Question:** {question}", ""]
     if plan:
-        lines += [f"**Analysis Plan:** {plan[:400]}", ""]
+        lines += [f"**Plan:** {plan[:400]}", ""]
 
-    metrics = output.get("metrics") or {}
+    # ── Run metrics ──────────────────────────────────────────────────────────
     if metrics:
+        tok = metrics.get("total_tokens", 0)
+        cost = metrics.get("total_cost_usd", 0.0)
+        ms = metrics.get("total_latency_ms", 0)
+        iters = metrics.get("total_iterations", 0)
+        queries = metrics.get("total_sql_queries", 0)
+        searches = metrics.get("total_web_searches", 0)
+        calls = metrics.get("total_tool_calls", 0)
+        search_part = f" · 🌐 `{searches} searches`" if searches else ""
         lines += [
-            f"*{metrics.get('total_tokens', 0):,} tokens · "
-            f"${metrics.get('total_cost_usd', 0.0):.4f} · "
-            f"{metrics.get('total_latency_ms', 0)}ms · "
-            f"{metrics.get('total_iterations', 0)} iterations · "
-            f"{metrics.get('total_sql_queries', 0)} queries*",
+            f"> ⚡ `{ms}ms` · 🔁 `{iters} iterations` · 🗄 `{queries} queries`"
+            f" · 🛠 `{calls} tool calls`{search_part}"
+            f" · 🪙 `{tok:,} tokens` · 💰 `${cost:.4f}`",
             "",
         ]
 
-    # Findings
-    findings = output.get("findings") or []
+    # ── Visualizations (inline Plotly HTML) ──────────────────────────────────
+    if visualizations:
+        lines += ["---", "### 📈 Visualizations", ""]
+        # Load Plotly once for the whole response
+        lines += [
+            "<script src='https://cdn.plot.ly/plotly-2.35.2.min.js'></script>",
+            "",
+        ]
+        for viz in visualizations:
+            spec_str = viz.get("plotly_spec", "")
+            title = viz.get("title", "Chart")
+            desc = viz.get("description", "")
+            chart_id = f"chart-{viz.get('id', 'x')}"
+
+            if desc:
+                lines += [f"**{title}** — {desc}", ""]
+            else:
+                lines += [f"**{title}**", ""]
+
+            if spec_str and spec_str != "{}":
+                lines += [
+                    f"<div id='{chart_id}' style='width:100%;height:420px;margin-bottom:1rem'></div>",
+                    f"<script>Plotly.newPlot('{chart_id}', {spec_str});</script>",
+                    "",
+                ]
+            else:
+                lines += ["*No chart data available*", ""]
+
+    # ── Findings ─────────────────────────────────────────────────────────────
     if findings:
-        lines += ["### Findings", ""]
+        lines += ["---", "### 🔍 Findings", ""]
         for f in findings:
-            icon = "✅" if f.get("is_fact") else "🔍"
             conf = f.get("confidence", 0.5)
-            et = f.get("evidence_type", "internal")
-            lines.append(
-                f"{icon} **[{et.upper()} · {conf:.0%} confidence]** "
-                f"{f.get('statement', '')}"
-            )
+            et = f.get("evidence_type", "internal").upper()
+            icon = "✅" if f.get("is_fact") else "🔍"
+            lines.append(f"{icon} **[{et} · {conf:.0%}]** {f.get('statement', '')}")
         lines.append("")
 
-    # Recommendations
-    recommendations = output.get("recommendations") or []
+    # ── Recommendations ───────────────────────────────────────────────────────
     if recommendations:
-        lines += ["### Recommendations", ""]
-        sorted_recs = sorted(recommendations, key=lambda r: r.get("priority", 99))
-        for i, r in enumerate(sorted_recs, 1):
+        lines += ["---", "### 💡 Recommendations", ""]
+        for i, r in enumerate(sorted(recommendations, key=lambda x: x.get("priority", 99)), 1):
             conf = r.get("confidence", 0.5)
             lines += [
                 f"**{i}. {r.get('recommendation', '')}**",
-                f"   - *Expected impact:* {r.get('expected_impact', 'N/A')}",
-                f"   - *Confidence:* {conf:.0%}",
-                f"   - *Next action:* {r.get('suggested_action', 'N/A')}",
+                f"- *Impact:* {r.get('expected_impact', 'N/A')}",
+                f"- *Confidence:* {conf:.0%}",
+                f"- *Next action:* {r.get('suggested_action', 'N/A')}",
                 "",
             ]
 
-    # Visualizations (embed plotly JSON as a code block for UI rendering)
-    visualizations = output.get("visualizations") or []
-    if visualizations:
-        lines += ["### Visualizations", ""]
-        for viz in visualizations:
-            lines += [
-                f"**{viz.get('title', 'Chart')}** ({viz.get('chart_type', 'chart')})",
-                f"{viz.get('description', '')}",
-                "",
-                "```plotly",
-                viz.get("plotly_spec", "{}"),
-                "```",
-                "",
-            ]
-
-    # Fused context
-    fused = output.get("fused_context")
-    if fused and fused.get("combined_insights"):
-        lines += ["### Cross-Source Insights", ""]
+    # ── External context (when web research ran) ─────────────────────────────
+    if fused and (fused.get("combined_insights") or fused.get("external_summary")):
+        lines += ["---", "### 🌐 External Context", ""]
+        ext = fused.get("external_summary", "")
+        if ext:
+            lines += [ext, ""]
         for insight in fused.get("combined_insights") or []:
             lines.append(f"- {insight}")
-        if fused.get("comparability_issues"):
-            lines += ["", "⚠️ **Comparability notes:**"]
-            for issue in fused.get("comparability_issues") or []:
-                lines.append(f"  - {issue}")
+        for issue in fused.get("comparability_issues") or []:
+            lines += ["", f"⚠️ *{issue}*"]
         lines.append("")
 
-    # Failure modes (transparency)
-    failure_modes = output.get("failure_modes") or []
+    # ── Failure transparency ──────────────────────────────────────────────────
     if failure_modes:
-        lines += ["", "---", f"⚠️ *Analysis notes: {', '.join(failure_modes)}*"]
+        lines += ["", f"⚠️ *Analysis notes: {', '.join(failure_modes)}*"]
 
-    if not findings and not recommendations:
-        lines.append("*Analysis complete — no specific findings were generated.*")
+    if not findings and not recommendations and not visualizations:
+        lines.append("*Analysis completed — no specific findings were generated.*")
 
     return "\n".join(lines)
 
