@@ -279,15 +279,15 @@ SERVICES=(
 )
 
 _container_healthy() {
-  local status
-  status=$(docker inspect --format '{{.State.Health.Status}}' "$1" 2>/dev/null || echo "none")
-  [[ "${status}" == "healthy" ]]
+  local hs
+  hs=$(docker inspect --format '{{.State.Health.Status}}' "$1" 2>/dev/null || echo "none")
+  [[ "${hs}" == "healthy" ]]
 }
 
 _container_running() {
-  local status
-  status=$(docker inspect --format '{{.State.Status}}' "$1" 2>/dev/null || echo "none")
-  [[ "${status}" == "running" ]]
+  local st
+  st=$(docker inspect --format '{{.State.Status}}' "$1" 2>/dev/null || echo "none")
+  [[ "${st}" == "running" ]]
 }
 
 WAIT=0
@@ -312,7 +312,7 @@ until (( WAIT >= MAX_WAIT )); do
   if $ALL_GOOD; then break; fi
 
   sleep 5
-  (( WAIT += 5 ))
+  (( WAIT += 5 )) || true
   printf "  [%3ds] checking..." "${WAIT}"
 
   # Detect and report any restarting containers
@@ -332,11 +332,16 @@ echo -e "${BOLD}  🚀  OODA Multi-Agent Stack is ready${RST}"
 echo -e "${BOLD}${GRN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
 echo ""
 
-printf "  %-16s %s\n" "Open WebUI"   "→  http://localhost:3000   (models: analytics / eda / monitor / research / simulate)"
+printf "  %-16s %s\n" "Open WebUI"   "→  http://localhost:3000   (pick a model: analytics / eda / monitor / research / simulate)"
 printf "  %-16s %s\n" "Backend API"  "→  http://localhost:8000/docs"
 printf "  %-16s %s\n" "LiteLLM"      "→  http://localhost:4000"
 printf "  %-16s %s\n" "n8n"          "→  http://localhost:5678"
 echo ""
+
+# Open URLs in the default browser
+open "http://localhost:3000"   2>/dev/null || true
+open "http://localhost:8000/docs" 2>/dev/null || true
+open "http://localhost:5678"   2>/dev/null || true
 
 # Print per-service health
 echo -e "  ${BOLD}Service health:${RST}"
