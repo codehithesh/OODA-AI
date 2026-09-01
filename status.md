@@ -511,6 +511,65 @@ Multi-database / cross-source (#21) — only DuckDB with 2 tables
 
 ---
 
+99 tests passed.
+
+What was implemented
+Architecture assessment found
+The existing system had 4 modes (analytics/monitor/research/simulate), a single-query analytics pipeline, n8n approval webhooks only for monitor mode, an eval harness with 4 scorer types, and no iterative analysis, hypothesis testing, web search, visualizations, or tool registry.
+
+New components created
+analysis_state.py — Structured state model for the full EDA lifecycle: hypotheses, queries, findings, visualizations, recommendations, n8n actions, failure taxonomy, and RunMetrics with per-step token/cost/latency tracking. Every analysis run is now fully traceable without relying on chat history.
+
+tools/ package (requirements 17, 5, 7, 10):
+
+base.py — BaseTool, ToolResult, ToolRegistry with error classification into the 5 failure modes
+warehouse_tool.py — InspectSchemaTool, ExecuteSQLTool, ProfileDataTool
+web_search_tool.py — WebSearchTool (DuckDuckGo default, configurable backend)
+visualization_tool.py — VisualizationTool generating Plotly JSON specs for 11 chart types
+n8n_tool.py — N8nTool with named workflow support via N8N_WORKFLOWS env var
+New nodes (requirements 3, 4, 5, 6, 7, 9):
+
+plan_analysis.py
+ — breaks broad questions into sub-questions + hypotheses
+eda_loop.py
+ — 4 nodes: generate_eda_sql, execute_eda_sql, evaluate_hypothesis, decide_next_step
+web_research.py
+ — targeted web searches when the agent decides external context helps
+fuse_context.py
+ — merges internal warehouse evidence with external research, flags comparability issues
+generate_findings.py
+ — structured findings (facts vs inferences), Plotly visualizations, prioritized recommendations
+eda_graph.py
+ — Full iterative EDA pipeline with loop routing (loop → web_search → finalize), registered as model eda
+
+benchmark.py (requirements 19–31) — Extended benchmark framework with failure taxonomy (5 modes), per-run observability, BenchmarkDashboard with P50/P95 latency, regression comparison (--compare), category breakdown
+
+New routes:
+
+GET/POST /v1/tools — tool registry introspection and direct invocation
+POST /v1/n8n/invoke — direct n8n workflow invocation
+GET/POST /v1/benchmark/runs — benchmark runs with failure taxonomy
+POST /v1/benchmark/compare — regression detection
+New prompts — 
+plan_analysis.md
+, 
+generate_eda_sql.md
+, 
+evaluate_evidence.md
+, 
+fuse_context.md
+, 
+generate_findings.md
+, 
+select_visualizations.md
+
+eda_suite.yaml
+ — 6 EDA benchmark cases covering broad EDA, hypothesis testing, multi-dimensional analysis, data quality awareness, and recommendation quality
+
+All existing functionality is preserved. The eda mode is a new additive graph that sits alongside analytics/monitor/research/simulate.
+
+---
+
 
 ## Setup steps for local use
 
