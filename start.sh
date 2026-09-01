@@ -332,7 +332,7 @@ echo -e "${BOLD}  🚀  OODA Multi-Agent Stack is ready${RST}"
 echo -e "${BOLD}${GRN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
 echo ""
 
-printf "  %-16s %s\n" "Open WebUI"   "→  http://localhost:3000   (models: analytics / monitor / research / simulate)"
+printf "  %-16s %s\n" "Open WebUI"   "→  http://localhost:3000   (models: analytics / eda / monitor / research / simulate)"
 printf "  %-16s %s\n" "Backend API"  "→  http://localhost:8000/docs"
 printf "  %-16s %s\n" "LiteLLM"      "→  http://localhost:4000"
 printf "  %-16s %s\n" "n8n"          "→  http://localhost:5678"
