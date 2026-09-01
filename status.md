@@ -570,6 +570,28 @@ All existing functionality is preserved. The eda mode is a new additive graph th
 
 ---
 
+## Git Submodule - context dir
+
+The nested git repo is intentional and serves a real purpose — every DecisionLog row stores the context_commit_sha, so you can always reproduce exactly what prompts, rules, and schemas produced a given decision. It's the audit trail for your agent's "brain".
+
+The problem is just that it was never registered as a proper git submodule in the outer repo. Fix it properly:
+
+cd /Users/hithesh/Documents/GitHub/OODA-Agent
+
+# Register the nested repo as a submodule
+git submodule add ./multi-agent-backend/backend/context multi-agent-backend/backend/context
+git add .gitmodules
+git commit -m "register context as git submodule"
+If that fails because git already tracked the path, you need to remove it from the index first:
+
+git rm -r --cached multi-agent-backend/backend/context
+git submodule add ./multi-agent-backend/backend/context multi-agent-backend/backend/context
+git add .gitmodules
+git commit -m "register context as git submodule"
+After this the outer repo tracks context at a specific commit SHA (the pointer), and you commit changes to context separately inside that directory. That's exactly the behaviour the git_context.py client expects — it reads the SHA of the inner repo to stamp every agent run.
+
+---
+
 
 ## Setup steps for local use
 
