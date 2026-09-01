@@ -42,7 +42,7 @@ GraphStarter = Callable[[], Any]  # returns an uncompiled StateGraph
 
 
 class GraphState(TypedDict, total=False):
-    """Shared state schema for all four agent graphs.
+    """Shared state schema for all agent graphs.
 
     Modes use the subset of keys they need; ``usage`` accumulates every LLM
     usage record across the run via an ``operator.add`` reducer.
@@ -58,7 +58,7 @@ class GraphState(TypedDict, total=False):
     decision_record: dict[str, Any]
     error: str
 
-    # --- analytics ---
+    # --- analytics (legacy single-query mode) ---
     generated_sql: str
     sql_rationale: str
     sql_valid: bool
@@ -91,6 +91,10 @@ class GraphState(TypedDict, total=False):
     scores: list[dict[str, Any]]
     winner: dict[str, Any]
 
+    # --- eda (iterative analysis) ---
+    analysis_state: dict[str, Any]   # serialised AnalysisState
+    eda_next: str                     # routing flag: loop | web_search | finalize
+
 
 # ===========================================================================
 # Terminal decision node (shared by all graphs)
@@ -114,6 +118,21 @@ def _evaluation_score(state: dict[str, Any]) -> float | None:
             return float(winner.get("score") or 0.0)
         except (TypeError, ValueError):
             return None
+    if mode == "eda":
+        analysis_data = state.get("analysis_state") or {}
+        findings = analysis_data.get("findings") or []
+        recommendations = analysis_data.get("recommendations") or []
+        complete = bool(analysis_data.get("analysis_complete"))
+        score = 0.0
+        if complete:
+            score += 0.3
+        if findings:
+            score += min(0.3, len(findings) * 0.1)
+        if recommendations:
+            score += min(0.2, len(recommendations) * 0.07)
+        if not (analysis_data.get("failure_modes") or []):
+            score += 0.2
+        return round(min(1.0, score), 3)
     return None
 
 
@@ -149,6 +168,27 @@ def _summarize_output(state: dict[str, Any]) -> dict[str, Any]:
             "winner": state.get("winner"),
             "variant_scores": state.get("scores", []),
             "reaction_count": len(state.get("reactions") or []),
+        }
+    if mode == "eda":
+        analysis_data = state.get("analysis_state") or {}
+        return {
+            "mode": "eda",
+            "run_id": analysis_data.get("run_id", ""),
+            "business_question": analysis_data.get("business_question", ""),
+            "analysis_plan": analysis_data.get("analysis_plan", ""),
+            "hypothesis_count": len(analysis_data.get("hypotheses") or []),
+            "query_count": len(analysis_data.get("queries") or []),
+            "finding_count": len(analysis_data.get("findings") or []),
+            "recommendation_count": len(analysis_data.get("recommendations") or []),
+            "visualization_count": len(analysis_data.get("visualizations") or []),
+            "findings": analysis_data.get("findings") or [],
+            "recommendations": analysis_data.get("recommendations") or [],
+            "visualizations": analysis_data.get("visualizations") or [],
+            "fused_context": analysis_data.get("fused_context"),
+            "metrics": analysis_data.get("metrics") or {},
+            "failure_modes": analysis_data.get("failure_modes") or [],
+            "iterations": analysis_data.get("current_iteration", 0),
+            "analysis_complete": analysis_data.get("analysis_complete", False),
         }
     return {}
 

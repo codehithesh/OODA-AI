@@ -30,6 +30,7 @@ from sqlalchemy import select
 
 # Import graph modules so they register their builders (static imports only).
 import graphs.analytics_graph
+import graphs.eda_graph  # noqa: F401  — registers the iterative EDA mode
 import graphs.monitor_graph
 import graphs.research_graph
 import graphs.simulate_graph  # noqa: F401
@@ -41,7 +42,8 @@ from config import get_settings
 from database import AsyncSessionLocal, check_database_connection, dispose_engine, run_migrations
 from models import ContextSnapshot
 from observability import setup_logging, setup_sentry
-from routes import chat, decisions, models, signals
+from routes import chat, decisions, models, signals, tools as tools_route
+from routes import benchmark as benchmark_route
 from routes import eval as eval_route
 
 logger = structlog.get_logger(__name__)
@@ -275,6 +277,9 @@ def create_app() -> FastAPI:
     app.include_router(decisions.router, prefix=settings.api_prefix, dependencies=auth)
     app.include_router(signals.router, prefix=settings.api_prefix, dependencies=auth)
     app.include_router(eval_route.router, prefix=settings.api_prefix, dependencies=auth)
+    app.include_router(tools_route.router, prefix=settings.api_prefix, dependencies=auth)
+    app.include_router(tools_route.n8n_router, prefix=settings.api_prefix, dependencies=auth)
+    app.include_router(benchmark_route.router, prefix=settings.api_prefix, dependencies=auth)
 
     @app.get("/", tags=["health"], summary="Service info")
     async def root() -> dict[str, Any]:

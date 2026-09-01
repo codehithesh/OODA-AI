@@ -68,6 +68,14 @@ class Settings(BaseSettings):
 
     # --- n8n human-approval webhooks ---
     n8n_webhook_url: str = ""
+    # JSON mapping of workflow_name → webhook URL
+    # e.g. '{"send_email": "https://n8n.example/webhook/abc"}'
+    n8n_workflows: str = ""
+
+    # --- web search ---
+    # Leave empty to use DuckDuckGo (no key required)
+    # Set to a self-hosted SearXNG/Brave/Google CSE endpoint for production
+    search_backend_url: str = ""
 
     # --- observability ---
     log_level: str = "INFO"

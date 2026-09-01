@@ -205,6 +205,96 @@ def _format_pending_approval(result: AgentRunResult) -> str:
     )
 
 
+def _format_eda(output: dict[str, Any]) -> str:
+    """Format the EDA analysis result as rich markdown for chat."""
+    lines = ["## Analysis Results", ""]
+
+    # Business question + plan
+    question = output.get("business_question", "")
+    plan = output.get("analysis_plan", "")
+    if question:
+        lines += [f"**Question:** {question}", ""]
+    if plan:
+        lines += [f"**Analysis Plan:** {plan[:400]}", ""]
+
+    metrics = output.get("metrics") or {}
+    if metrics:
+        lines += [
+            f"*{metrics.get('total_tokens', 0):,} tokens · "
+            f"${metrics.get('total_cost_usd', 0.0):.4f} · "
+            f"{metrics.get('total_latency_ms', 0)}ms · "
+            f"{metrics.get('total_iterations', 0)} iterations · "
+            f"{metrics.get('total_sql_queries', 0)} queries*",
+            "",
+        ]
+
+    # Findings
+    findings = output.get("findings") or []
+    if findings:
+        lines += ["### Findings", ""]
+        for f in findings:
+            icon = "✅" if f.get("is_fact") else "🔍"
+            conf = f.get("confidence", 0.5)
+            et = f.get("evidence_type", "internal")
+            lines.append(
+                f"{icon} **[{et.upper()} · {conf:.0%} confidence]** "
+                f"{f.get('statement', '')}"
+            )
+        lines.append("")
+
+    # Recommendations
+    recommendations = output.get("recommendations") or []
+    if recommendations:
+        lines += ["### Recommendations", ""]
+        sorted_recs = sorted(recommendations, key=lambda r: r.get("priority", 99))
+        for i, r in enumerate(sorted_recs, 1):
+            conf = r.get("confidence", 0.5)
+            lines += [
+                f"**{i}. {r.get('recommendation', '')}**",
+                f"   - *Expected impact:* {r.get('expected_impact', 'N/A')}",
+                f"   - *Confidence:* {conf:.0%}",
+                f"   - *Next action:* {r.get('suggested_action', 'N/A')}",
+                "",
+            ]
+
+    # Visualizations (embed plotly JSON as a code block for UI rendering)
+    visualizations = output.get("visualizations") or []
+    if visualizations:
+        lines += ["### Visualizations", ""]
+        for viz in visualizations:
+            lines += [
+                f"**{viz.get('title', 'Chart')}** ({viz.get('chart_type', 'chart')})",
+                f"{viz.get('description', '')}",
+                "",
+                "```plotly",
+                viz.get("plotly_spec", "{}"),
+                "```",
+                "",
+            ]
+
+    # Fused context
+    fused = output.get("fused_context")
+    if fused and fused.get("combined_insights"):
+        lines += ["### Cross-Source Insights", ""]
+        for insight in fused.get("combined_insights") or []:
+            lines.append(f"- {insight}")
+        if fused.get("comparability_issues"):
+            lines += ["", "⚠️ **Comparability notes:**"]
+            for issue in fused.get("comparability_issues") or []:
+                lines.append(f"  - {issue}")
+        lines.append("")
+
+    # Failure modes (transparency)
+    failure_modes = output.get("failure_modes") or []
+    if failure_modes:
+        lines += ["", "---", f"⚠️ *Analysis notes: {', '.join(failure_modes)}*"]
+
+    if not findings and not recommendations:
+        lines.append("*Analysis complete — no specific findings were generated.*")
+
+    return "\n".join(lines)
+
+
 def _format_content(mode: str, result: AgentRunResult, executed: dict[str, Any] | None) -> str:
     if result.status == "pending_approval":
         return _format_pending_approval(result)
@@ -216,6 +306,8 @@ def _format_content(mode: str, result: AgentRunResult, executed: dict[str, Any] 
         return _format_research(result.output)
     if mode == "simulate":
         return _format_simulate(result.output)
+    if mode == "eda":
+        return _format_eda(result.output)
     return json.dumps(result.output, default=str, indent=2)
 
 

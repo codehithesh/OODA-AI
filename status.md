@@ -482,6 +482,35 @@ docker compose restart litellm
 
 ---
 
+## Architecture Assessment
+
+### What exists:
+
+Analytics mode: linear SQL generation pipeline (load_context → generate_sql → validate_sql → log_decision). Single query, no iteration.
+Monitor mode: rule-based signal detection + LLM classification + action matrix + n8n approval interrupt
+Research mode: cyclic peer-review loop (parallel_peers → evaluate_evidence → synthesize)
+Simulate mode: persona fan-out (spawn → draft → react → score → pick_winner)
+Eval harness with 4 scorer types; full test suite; Redis pub/sub; PostgreSQL persistence; Langfuse; Sentry
+
+---
+
+### What's missing (mapped to requirements):
+
+EDA/Analytical Loop (#3) — analytics is single-query only; no iterative analysis
+Hypothesis/Decision Layer (#4) — no hypothesis tracking or iterative evidence evaluation
+Web Search Tool (#5) — no external web search capability
+Context Fusion Layer (#6) — no internal+external synthesis
+Visualization Engine (#7) — no chart generation
+Recommendation Engine (#9) — no structured recommendations
+Structured Analysis State (#12) — no AnalysisState tracking beyond basic GraphState
+First-class Tool Calling Architecture (#17) — no tool schemas/registry; nodes are implicit tools
+Per-run Cost & Token Observability (#18) — latency/tokens exist in DecisionLog but no per-step breakdown
+Benchmark Framework extensions (#19–31) — existing eval harness covers Text2SQL; missing failure taxonomy, multi-DB, extraction benchmarks, domain knowledge layer
+n8n action tool (#10) — n8n is only used for monitor approval; no general action invocation
+Multi-database / cross-source (#21) — only DuckDB with 2 tables
+
+---
+
 
 ## Setup steps for local use
 
