@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MonitorEvent",
+  "description": "Structured event payload ingested by the monitor agent (POST /v1/signals or monitor-mode chat).",
+  "type": "object",
+  "properties": {
+    "metric": {
+      "type": "string",
+      "enum": ["error_rate", "latency_p95_ms", "cpu_percent", "queue_depth", "disk_free_percent"],
+      "description": "Metric name the detection rules match against."
+    },
+    "value": {
+      "type": "number",
+      "description": "Observed metric value compared to the rule threshold."
+    },
+    "source": {
+      "type": "string",
+      "description": "Originating service or probe, e.g. payments-api."
+    },
+    "description": {
+      "type": "string",
+      "description": "Free-text incident description for unstructured events."
+    }
+  },
+  "additionalProperties": true,
+  "examples": [
+    {"metric": "error_rate", "value": 0.31, "source": "payments-api"},
+    {"description": "payment provider returned 503s for 10 minutes", "source": "payments-api"}
+  ]
+}

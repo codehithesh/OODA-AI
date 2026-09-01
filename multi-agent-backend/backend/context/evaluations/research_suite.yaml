@@ -1,0 +1,93 @@
+suite: research_suite
+mode: research
+scorer: llm_judge
+threshold: 0.70
+description: |
+  Research agent cyclic peer-review: multiple peers generate evidence for a query,
+  each generation refines the brief. Evaluators judge clarity, evidence quality,
+  consensus strength, and synthesis rigor.
+
+cases:
+  - id: market_expansion_research
+    input:
+      query: "Should we enter the Southeast Asian market?"
+      context: |
+        Company context: B2B SaaS, currently in NA/EMEA, strong product-market fit.
+        Budget: 2M for 12-month pilot. Key metrics: unit economics, hiring pipeline, regulatory fit.
+    expected:
+      rubric: |
+        The final synthesis must:
+        1. Aggregate all peer perspectives (at least 3 distinct viewpoints)
+        2. Highlight points of consensus and disagreement
+        3. Quantify key trade-offs (cost vs revenue potential, timeline risk)
+        4. Identify 2-3 critical unknowns requiring further research
+        5. Conclude with a clear recommendation supported by the evidence
+        Confidence threshold: 0.75 or higher consensus
+
+  - id: technical_debt_priority
+    input:
+      query: "Should we prioritize the Python 3.12 migration over the database sharding project?"
+      context: |
+        Current state: Python 3.9 (EOL in Oct 2025), 50K LOC backend.
+        Python 3.12 migration: 4 weeks, removes 2 deprecation warnings, improves LLM latency 5%.
+        Database sharding: 8 weeks, unblocks 10x scale, 3 team dependencies.
+        Tech leads are split on priority.
+    expected:
+      rubric: |
+        The synthesis must:
+        1. Frame the decision using multiple lenses (risk, velocity, scalability)
+        2. Include perspectives from at least 2 distinct personas (e.g., infrastructure engineer, product lead)
+        3. Quantify trade-offs in concrete terms (timeline, team cost, risk reduction)
+        4. Address both short-term pain and long-term platform health
+        5. Explicitly state assumptions and unknowns
+        Target confidence: >0.80 (high consensus on recommendation)
+
+  - id: vendor_selection_two_options
+    input:
+      query: "DataLake vendor: Snowflake vs. BigQuery for analytics backend?"
+      context: |
+        Requirements: 50M events/day, real-time dashboards, <$5K/month, Python SDK, data governance.
+        Current tools: PostgreSQL, DuckDB (embedded), Redis.
+        Teams: analytics (prefers SQL), data eng (prefers Terraform), finance (cost-sensitive).
+    expected:
+      rubric: |
+        Peers should:
+        1. Independently model cost structures (query patterns, storage, egress)
+        2. Assess vendor roadmap alignment with growth (3-year horizon)
+        3. Identify lock-in risks for each option
+        4. Provide at least one criterion where Snowflake wins and one where BigQuery wins
+        5. Synthesize into a weighted decision matrix
+        Consensus threshold: >=3 of 5 peers align on top-2 recommendation
+
+  - id: hiring_plan_one_role
+    input:
+      query: "Hire a senior data engineer in Q4 or wait until Q1 2027?"
+      context: |
+        Q4 pipeline: 2 strong candidates, one accepting lower comp, one multi-offer.
+        Q1 outlook: budget refresh, typically 40+ candidates, seasonal talent influx.
+        Current load: 60% capacity on analytics platform, 2 unblocked roadmap items.
+        Churn risk: existing eng may leave if no relief by Dec.
+    expected:
+      rubric: |
+        Research must weigh:
+        1. Talent market dynamics (supply in Q4 vs Q1)
+        2. Org impact (retention, shipping velocity, burn rate)
+        3. Candidate quality (immediate hire vs waiting for better fit)
+        4. Financial trade-offs (hiring cost + ramp vs opportunity cost)
+        5. Synthesis must account for decision reversibility (easy to hire later?)
+        Confidence: 0.70+, clear recommendation
+
+  - id: api_versioning_strategy
+    input:
+      query: "Deprecate REST /v1 and migrate to GraphQL /v2, or maintain both indefinitely?"
+      scorer: exact_match
+      expected:
+        action_recommended: "migrate_both"
+        reasoning_includes: ["cost_of_maintenance", "client_migration_path", "feature_velocity"]
+      rubric: |
+        Peers should:
+        1. Model support cost for dual APIs (infra, testing, docs, support)
+        2. Survey client ecosystem: how many are REST-only vs willing to migrate?
+        3. Quantify feature velocity gain/loss from GraphQL (abstraction cost vs query flexibility)
+        4. Outline a realistic migration timeline (12mo? 24mo?)
+        5. Recommend a hybrid approach (deprecate REST, support both for N months, then sunset)

@@ -1,0 +1,11 @@
+# Simulate agent rules — variant fan-out and persona scoring.
+variant_count: 2
+variant_styles: [concise, detailed]
+style_guidance:
+  concise: "Answer in at most three tight, information-dense sentences. No headers."
+  detailed: "Answer thoroughly with markdown structure (short intro, headed sections, a closing recommendation)."
+persona_count: 4
+scoring:
+  support_weight: 0.6
+  opposition_weight: 0.25
+  engagement_weight: 0.15

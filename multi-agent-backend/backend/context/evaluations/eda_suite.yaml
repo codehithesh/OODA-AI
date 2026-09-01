@@ -1,0 +1,84 @@
+suite: eda_suite
+mode: eda
+scorer: llm_judge
+threshold: 0.6
+cases:
+  - id: revenue_broad_eda
+    input:
+      query: "How can we increase revenue?"
+    expected:
+      rubric: |
+        Score 1.0 if the agent:
+        - Produces a coherent analysis plan with multiple sub-questions
+        - Generates at least 2 SQL queries against the orders table
+        - Produces at least 1 finding grounded in the data
+        - Produces at least 1 recommendation with evidence
+        Score 0.5 if partial (plan + queries but no recommendations)
+        Score 0.0 if the agent returns a single SQL query without iterative analysis
+
+  - id: revenue_trend_analysis
+    input:
+      query: "What are the revenue trends over the past 90 days and which regions are growing?"
+    expected:
+      rubric: |
+        Score 1.0 if the agent:
+        - Queries daily/weekly revenue trends using date_trunc
+        - Queries revenue by region
+        - Identifies whether regions are growing or declining
+        - Shows correct DuckDB SQL using ordered_at column
+        Score 0.5 if queries are generated but analysis is incomplete
+        Score 0.0 if SQL errors or no temporal analysis
+
+  - id: hypothesis_testing
+    input:
+      query: "Is our revenue declining because of high refund rates?"
+    expected:
+      rubric: |
+        Score 1.0 if the agent:
+        - Forms a specific hypothesis about refund rates affecting revenue
+        - Queries refund rates (status = 'refunded') over time
+        - Queries total revenue over the same period
+        - Evaluates whether evidence supports or rejects the hypothesis
+        - Produces a clear finding with confidence
+        Score 0.5 if hypothesis is formed but evidence evaluation is shallow
+        Score 0.0 if the agent does not test the hypothesis iteratively
+
+  - id: multi_dimension_analysis
+    input:
+      query: "Which customer segments and regions have the highest lifetime value?"
+    expected:
+      rubric: |
+        Score 1.0 if the agent:
+        - Queries revenue and order frequency per customer_id
+        - Queries by region
+        - Calculates or approximates customer lifetime value
+        - Identifies top segments
+        - Produces at least one visualization suggestion
+        Score 0.5 if partial analysis (one dimension only)
+        Score 0.0 if single lookup query without segmentation
+
+  - id: data_quality_awareness
+    input:
+      query: "Analyze our order data quality and identify any issues before I run analysis"
+    expected:
+      rubric: |
+        Score 1.0 if the agent:
+        - Profiles the orders table (null rates, distinct counts, row count)
+        - Identifies the column types and data shape
+        - Notes any potential data quality concerns
+        - Recommends whether data is ready for analysis
+        Score 0.5 if partial profiling is done
+        Score 0.0 if no profiling or data quality analysis
+
+  - id: recommendation_quality
+    input:
+      query: "What actions should we take to reduce refunds and increase customer retention?"
+    expected:
+      rubric: |
+        Score 1.0 if the final recommendations are:
+        - Specific and actionable (not generic advice)
+        - Grounded in the warehouse data with evidence
+        - Include expected business impact
+        - Distinguish between high-confidence and low-confidence suggestions
+        Score 0.5 if recommendations are present but not evidence-grounded
+        Score 0.0 if no recommendations or only generic advice
