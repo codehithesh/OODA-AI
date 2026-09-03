@@ -1,0 +1,43 @@
+suite: analytics_suite
+mode: analytics
+scorer: exact_sql
+threshold: 0.75
+cases:
+  - id: total_revenue
+    input:
+      query: "What is the total revenue across all orders?"
+    expected:
+      sql: "SELECT SUM(amount) AS total_revenue FROM orders"
+
+  - id: orders_by_region
+    input:
+      query: "How many orders are there per region?"
+    scorer: execution_match
+    fixture: |
+      CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, region VARCHAR, status VARCHAR, amount DECIMAL(12,2), ordered_at TIMESTAMP);
+      INSERT INTO orders VALUES
+        (1, 10, 'emea', 'paid', 100.00, '2026-08-01 10:00'),
+        (2, 11, 'emea', 'paid', 150.00, '2026-08-02 11:00'),
+        (3, 12, 'na',   'paid', 90.00,  '2026-08-03 09:30'),
+        (4, 13, 'apac', 'refunded', 60.00, '2026-08-04 16:00');
+    expected:
+      sql: "SELECT region, COUNT(*) AS order_count FROM orders GROUP BY region"
+
+  - id: refunded_orders_recent
+    input:
+      query: "List all refunded orders."
+    scorer: execution_match
+    fixture: |
+      CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, region VARCHAR, status VARCHAR, amount DECIMAL(12,2), ordered_at TIMESTAMP);
+      INSERT INTO orders VALUES
+        (5, 14, 'na', 'refunded', 25.50, '2026-08-05 08:00'),
+        (6, 15, 'emea', 'paid', 310.00, '2026-08-05 09:00');
+    expected:
+      sql: "SELECT order_id, customer_id, region, amount FROM orders WHERE status = 'refunded'"
+
+  - id: average_order_value
+    input:
+      query: "What is the average order value?"
+    scorer: llm_judge
+    expected:
+      rubric: "The SQL computes an average (AVG) over the amount column of the orders table, with a clear alias."

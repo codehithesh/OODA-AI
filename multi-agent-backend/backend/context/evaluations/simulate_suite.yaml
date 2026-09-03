@@ -1,0 +1,99 @@
+suite: simulate_suite
+mode: simulate
+scorer: llm_judge
+threshold: 0.75
+description: |
+  Simulate agent: spawn personas, run draft variants, collect reactions, score.
+  Evaluates whether the picked winner best balances the competing persona preferences.
+
+cases:
+  - id: pricing_strategy_persona_feedback
+    input:
+      query: "Should we move from per-seat to per-data-GB pricing for the data platform?"
+      variant_count: 3
+      variant_styles: [concise, detailed, technical]
+      personas: [growth_trader, cautious_compliance, retail_user, risk_manager]
+    expected:
+      rubric: |
+        1. At least 3 distinct draft variants were generated with different styles/tones
+        2. Each persona responded to each variant with reasoned feedback
+        3. Scoring reflects persona preferences:
+           - growth_trader: wants revenue upside, flexible billing
+           - risk_manager: wants predictability, no surprise bills
+           - retail_user: wants simplicity, clear pricing
+           - compliance: wants audit trail, fair usage limits
+        4. Winner should satisfy high-priority personas without alienating others
+        5. Trace shows persona_reactions were scored and aggregated correctly
+        Confidence: 0.75+
+
+  - id: incident_response_flow_messaging
+    input:
+      query: "Draft incident communication to customers (payment downtime: 10 min, all data recovered)."
+      variant_count: 3
+      variant_styles: [apologetic, technical, business_focused]
+      personas: [retail_user, risk_manager, cautious_compliance]
+    expected:
+      rubric: |
+        1. Variants must differ materially in tone/content:
+           - apologetic: empathy, compensation mention, timeline
+           - technical: what broke, why, how we fixed it, preventive steps
+           - business_focused: impact, recovery, next steps, trust restoration
+        2. Personas should react to trade-offs:
+           - retail_user: cares about "is my data safe?" and tone
+           - compliance: wants legal accuracy, liability clarity
+           - risk manager: wants prevention steps and accountability
+        3. Winner balances transparency, brevity, and reassurance
+        4. Scoring is deterministic (not random)
+
+  - id: product_feature_naming
+    input:
+      query: "Name this feature: ML-powered anomaly detection + auto-remediation."
+      variant_count: 2
+      variant_styles: [marketing, technical]
+      personas: [growth_trader, retail_user]
+    expected:
+      rubric: |
+        1. Two names generated: one marketing-friendly, one technical
+           Examples: "AutoGuard" vs "Anomaly Auto-Response Engine"
+        2. Growth trader should prefer broader appeal, adoption potential
+        3. Retail user should prefer clarity, understandability
+        4. Winner reflects the highest aggregate persona score, with tiebreaker logic
+        5. Scoring matrix was applied consistently
+
+  - id: policy_update_communication
+    input:
+      query: |
+        Update our data retention policy from 90 days to 180 days.
+        Draft the policy change announcement for users.
+      variant_count: 3
+      variant_styles: [benefit_focused, compliance_focused, concise]
+      personas: [cautious_compliance, retail_user, risk_manager]
+    expected:
+      rubric: |
+        Trace must show:
+        1. Three distinct variants with different emphases
+        2. Persona reactions address:
+           - Compliance: audit trail, legal standing, regulatory alignment
+           - Retail user: "what does this mean for me?" and "will it cost more?"
+           - Risk manager: operational overhead, storage costs, liability surface
+        3. Winner reflects a reasonable consensus (e.g., benefit+compliance)
+        4. Scoring rubric weights are transparent and reproducible
+
+  - id: onboarding_flow_ux_variants
+    input:
+      query: "Redesign the SaaS onboarding flow: 3 approaches (quick-start, guided, api-first)."
+      variant_count: 3
+      variant_styles: [quick_start, guided_walkthrough, api_developer]
+      personas: [retail_user, growth_trader, risk_manager]
+    expected:
+      rubric: |
+        1. Three materially different flows:
+           - Quick-start: minimal steps, immediate value, magic defaults
+           - Guided: wizard, explanations, best practices baked in
+           - API-first: zero UI, Terraform/SDK, power-user friendly
+        2. Persona scoring:
+           - Retail user: ease and speed (wants quick-start or guided)
+           - Growth trader: adoption rate, virality (prefers quick-start)
+           - Risk manager: governance, compliance controls (prefers guided or api-first)
+        3. Winner is the one with highest aggregate score accounting for persona weights
+        4. Trace shows scoring transparency

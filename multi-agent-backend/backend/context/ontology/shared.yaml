@@ -1,0 +1,88 @@
+# shared.yaml — cross-mode ontology for OODA-AI
+#
+# PURPOSE
+# -------
+# Name the business concepts and relationships your warehouse actually has data
+# for.  The model already reasons about general business fundamentals; this file
+# tells it which nouns and verbs *this* warehouse uses, so it can map them to
+# the right tables and columns without guessing.
+#
+# DESIGN RULES (keep to maintain value)
+# ----------------------------------------
+# 1. Concepts = nouns in your warehouse.  Only add a concept here if there is
+#    actual data for it (a table, a column, a materialised view).
+# 2. Relationships = the verbs that link those nouns.  One triple per line.
+# 3. Do NOT hand-encode ontology→table mappings (e.g. customer: dim_client).
+#    Let the model infer the mapping from ontology + schema_ddl being in the
+#    same prompt.  Only add an explicit mapping layer later, and only if
+#    benchmarks show schema-linking is a real failure mode.
+# 4. Do NOT add generic causal/business knowledge ("revenue is affected by
+#    pricing strategy").  A capable LLM already knows this.
+# 5. Keep this file small and stable.  Every concept added here should survive
+#    for months.  Ephemeral or experimental concepts belong in mode-specific
+#    files, not here.
+# 6. versioning is handled by commit_sha on ContextBundle — no separate version
+#    field needed.
+
+concepts:
+  - id: customer
+    label: Customer
+    description: An entity that places orders.
+
+  - id: order
+    label: Order
+    description: A transactional record of a purchase made by a customer.
+
+  - id: order_item
+    label: Order Item
+    description: A single line within an order, referencing a product and quantity.
+
+  - id: product
+    label: Product
+    description: A good or service sold to customers.
+
+  - id: revenue
+    label: Revenue
+    unit: currency
+    description: Monetary value generated from orders (typically sum of amount).
+
+  - id: region
+    label: Region
+    description: A geographic grouping of orders (e.g. emea, na, apac, latam).
+
+  - id: time_period
+    label: Time Period
+    description: A calendar window used to bucket metrics (day, week, month).
+
+  - id: order_status
+    label: Order Status
+    description: Lifecycle state of an order (paid, shipped, refunded).
+
+relationships:
+  - subject: customer
+    predicate: places
+    object: order
+
+  - subject: order
+    predicate: contains
+    object: order_item
+
+  - subject: order_item
+    predicate: references
+    object: product
+
+  - subject: order
+    predicate: generates
+    object: revenue
+
+  - subject: order
+    predicate: belongs_to
+    object: region
+
+  - subject: order
+    predicate: has_status
+    object: order_status
+
+  - subject: revenue
+    predicate: measured_over
+    object: time_period

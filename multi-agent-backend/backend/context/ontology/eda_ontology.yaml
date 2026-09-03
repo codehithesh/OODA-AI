@@ -1,0 +1,59 @@
+# eda_ontology.yaml — EDA-mode extensions to the shared ontology
+#
+# These concepts are specific to exploratory data analysis runs.
+# All concepts and relationships in shared.yaml are already available;
+# only add what is genuinely EDA-specific here.
+#
+# Merged by _load_ontology(): shared concepts are the base, these are appended.
+# Duplicate concept ids (already in shared.yaml) are silently skipped.
+
+concepts:
+  - id: hypothesis
+    label: Hypothesis
+    description: >
+      A falsifiable statement about the data that the EDA loop sets out to
+      support, reject, or refine through SQL evidence.
+
+  - id: metric
+    label: Metric
+    description: >
+      A quantitative measurement derived from warehouse data used to evaluate
+      a hypothesis (e.g. daily_metrics.value, aggregate revenue figures).
+
+  - id: metric_series
+    label: Metric Series
+    description: >
+      A time-ordered sequence of a metric's values, used to identify trends
+      and anomalies during exploratory analysis.
+
+  - id: anomaly
+    label: Anomaly
+    description: >
+      An unexpected deviation in a metric series that warrants further
+      investigation within an EDA loop iteration.
+
+  - id: finding
+    label: Finding
+    description: >
+      A confirmed, evidence-backed insight produced after hypothesis evaluation.
+
+relationships:
+  - subject: hypothesis
+    predicate: supported_by
+    object: metric
+
+  - subject: metric
+    predicate: derived_from
+    object: order
+
+  - subject: metric_series
+    predicate: contains
+    object: anomaly
+
+  - subject: finding
+    predicate: resolves
+    object: hypothesis
+
+  - subject: metric
+    predicate: measured_over
+    object: time_period

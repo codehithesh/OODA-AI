@@ -1,0 +1,30 @@
+suite: monitor_suite
+mode: monitor
+scorer: exact_match
+output_field: action
+threshold: 0.75
+cases:
+  - id: error_burst_critical
+    input:
+      event: {metric: error_rate, value: 0.31, source: payments-api}
+    expected:
+      action: require_approval
+
+  - id: queue_backlog_medium
+    input:
+      event: {metric: queue_depth, value: 2400, source: ingestion}
+    expected:
+      action: auto_act
+
+  - id: disk_pressure_low
+    input:
+      event: {metric: disk_free_percent, value: 3.1, source: db-node-1}
+    expected:
+      action: ignore
+
+  - id: unstructured_incident
+    input:
+      event: {description: "payment provider returned 503s for 10 minutes", source: payments-api}
+    scorer: llm_judge
+    expected:
+      rubric: "Classified as an operational incident (kind within the taxonomy), severity medium or higher, and the action is require_approval or auto_act."

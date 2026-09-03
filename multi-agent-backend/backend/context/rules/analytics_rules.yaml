@@ -1,0 +1,32 @@
+# Analytics agent rules — SQL guardrails for DuckDB.
+dialect: duckdb
+allowed_start_statements: [select, with]
+forbidden_keywords:
+  - insert
+  - update
+  - delete
+  - drop
+  - alter
+  - create
+  - truncate
+  - grant
+  - revoke
+  - copy
+  - attach
+  - detach
+  - export
+  - import
+  - pragma
+  - call
+  - vacuum
+  - checkpoint
+  - begin
+  - commit
+  - rollback
+require_single_statement: true
+max_query_length: 5000
+max_rows: 200
+notes:
+  - Use date_trunc('day', ordered_at) for daily buckets and date_trunc('week', ...) / ('month', ...) for coarser ones.
+  - amount is DECIMAL — cast with CAST(x AS DOUBLE) when averaging mixed metrics.
+  - Refunded orders have status = 'refunded'.

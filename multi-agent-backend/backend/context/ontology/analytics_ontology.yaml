@@ -1,0 +1,59 @@
+# analytics_ontology.yaml — analytics-mode extensions to the shared ontology
+#
+# These concepts are specific to structured analytics / Text-to-SQL runs
+# (the analytics graph: load_context → generate_sql → validate_sql → execute).
+# All concepts and relationships in shared.yaml are already available;
+# only add what is genuinely analytics-specific here.
+#
+# Merged by _load_ontology(): shared concepts are the base, these are appended.
+# Duplicate concept ids (already in shared.yaml) are silently skipped.
+
+concepts:
+  - id: aggregation
+    label: Aggregation
+    description: >
+      A summarisation operation applied to a set of rows (SUM, AVG, COUNT, etc.)
+      to produce a single scalar result for reporting.
+
+  - id: dimension
+    label: Dimension
+    description: >
+      A categorical attribute used to slice or group metrics in a query
+      (e.g. region, order_status, date_trunc bucket).
+
+  - id: cohort
+    label: Cohort
+    description: >
+      A group of customers or orders sharing a common attribute or time window,
+      used for comparative analysis (e.g. weekly cohort revenue).
+
+  - id: refund
+    label: Refund
+    description: >
+      An order with status = 'refunded'; tracked separately because refunded
+      revenue must be excluded from net revenue calculations.
+
+relationships:
+  - subject: revenue
+    predicate: grouped_by
+    object: dimension
+
+  - subject: aggregation
+    predicate: applied_to
+    object: order
+
+  - subject: cohort
+    predicate: contains
+    object: customer
+
+  - subject: cohort
+    predicate: measured_by
+    object: revenue
+
+  - subject: refund
+    predicate: reduces
+    object: revenue
+
+  - subject: order
+    predicate: segmented_by
+    object: region
