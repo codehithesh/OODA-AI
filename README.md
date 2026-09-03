@@ -32,8 +32,11 @@ The system currently ships five agent modes, each accessible as a "model" from t
 
 - 🔁 **Iterative EDA loop** — the `eda` agent forms hypotheses, queries the warehouse, evaluates evidence, loops until resolved, then produces findings and recommendations
 - 📊 **Inline Plotly charts** — visualisations render directly in the chat interface (no separate dashboard required)
+- 🧠 **Domain ontology layer** — shared and mode-specific concept definitions ground SQL generation and analytical planning in consistent business definitions
+- 🤖 **Gymnasium RL environment** — `DataAnalystEnv` wraps the EDA loop with text observation/action spaces, hardened Docker sandboxing for Python, and eval-driven rewards for agent training
+- 🛡️ **Leakage-guarded policy evals** — `evals/run_eval.py` evaluates checkpointed RL policies using the same scoring harness, strictly enforcing disjoint train/eval splits at runtime
 - 🧪 **Built-in evaluation harness** — YAML test suites with `exact_sql`, `execution_match`, `exact_match`, and `llm_judge` scorers; every run is scored and stored
-- 🔍 **Failure taxonomy** — every failed benchmark run is classified into one of five failure modes (planning failure, plan error, data selection error, implementation error, runtime error)
+- 🔍 **Failure taxonomy** — every failed benchmark run is classified into one of six failure modes (planning failure, plan error, data selection error, implementation error, runtime error, semantic misunderstanding)
 - 📋 **Full audit trail** — every agent run writes a `DecisionLog` row with context commit SHA, latency, token counts, and cost
 - 🔀 **n8n integration** — monitor approval requests pause the graph and notify n8n; any downstream workflow (email, Slack, Jira) can be triggered from the agent
 - 🔒 **Self-hosted** — runs entirely in Docker Compose; bring your own LLM keys via LiteLLM
@@ -43,27 +46,38 @@ The system currently ships five agent modes, each accessible as a "model" from t
 ## Stack
 
 ```
-multi-agent-backend/
-├── docker-compose.yml          # postgres, redis, litellm, backend, open-webui, n8n
-├── litellm_config.yaml         # LLM provider routing
-├── Makefile                    # dev / test / eval / lint targets
-└── backend/
-    ├── main.py                 # FastAPI app factory + lifespan
-    ├── config.py               # Pydantic Settings (single source of truth)
-    ├── models.py               # DecisionLog, Signal, ContextSnapshot (SQLAlchemy 2.0)
-    ├── schemas.py              # OpenAI-compatible + domain Pydantic v2 schemas
-    ├── eval_harness.py         # Evaluation runner + CLI
-    ├── benchmark.py            # Extended benchmark with failure taxonomy + dashboard
-    ├── analysis_state.py       # Structured EDA state (hypotheses, queries, findings, metrics)
-    ├── graphs/                 # LangGraph state machines (analytics, eda, monitor, research, simulate)
-    ├── nodes/                  # Pure async node functions (one per file)
-    ├── tools/                  # Tool registry (warehouse, web search, visualization, n8n)
-    ├── routes/                 # chat, models, decisions, signals, eval, tools, benchmark
-    ├── clients/                # litellm, duckdb, redis, prompt_loader, git_context
-    └── context/                # Git-versioned: prompts/ rules/ schemas/ personas/ evaluations/
+OODA-Agent/
+├── rl_env/                     # Gymnasium RL training environment
+│   ├── env.py                  # DataAnalystEnv (text observation & action spaces)
+│   ├── sandbox.py              # Hardened Docker sandbox for Python actions
+│   └── rewards.py              # Reward composition from evaluation scorers
+├── evals/                      # Policy evaluation & split leakage guard
+│   └── run_eval.py             # RLEvalRunner + assert_disjoint_splits
+├── training/                   # RL training loop scaffolding
+│   └── train_rl.py             # Episode runner & trajectory collector
+└── multi-agent-backend/        # Core agent service & orchestration
+    ├── docker-compose.yml      # postgres, redis, litellm, backend, open-webui, n8n
+    ├── litellm_config.yaml     # LLM provider routing
+    ├── Makefile                # dev / test / eval / lint targets
+    └── backend/
+        ├── main.py             # FastAPI app factory + lifespan
+        ├── config.py           # Pydantic Settings (single source of truth)
+        ├── models.py           # DecisionLog, Signal, ContextSnapshot (SQLAlchemy 2.0)
+        ├── schemas.py          # OpenAI-compatible + domain Pydantic v2 schemas
+        ├── eval_harness.py     # Evaluation runner + CLI
+        ├── benchmark.py        # Extended benchmark with failure taxonomy + dashboard
+        ├── analysis_state.py   # Structured EDA state (hypotheses, queries, findings, metrics)
+        ├── graphs/             # LangGraph state machines (analytics, eda, monitor, research, simulate)
+        ├── nodes/              # Pure async node functions (one per file)
+        ├── tools/              # Tool registry (warehouse, web search, visualization, n8n)
+        ├── routes/             # chat, models, decisions, signals, eval, tools, benchmark
+        ├── clients/            # litellm, duckdb, redis, prompt_loader, git_context
+        └── context/            # Git-versioned: prompts/ ontology/ rules/ schemas/ personas/ evaluations/
 ```
 
-**Backend:** FastAPI · LangGraph · SQLAlchemy 2.0 (async) · Alembic · Pydantic v2 · DuckDB · Redis · LiteLLM
+**Backend & Agents:** FastAPI · LangGraph · SQLAlchemy 2.0 (async) · Alembic · Pydantic v2 · DuckDB · Redis · LiteLLM
+
+**RL & Evaluation:** Gymnasium · Docker SDK (sandboxed execution) · Eval Harness (AST SQL, execution matching, LLM judge)
 
 **Infrastructure:** PostgreSQL 16 · Redis 7 · n8n · Open WebUI · Docker Compose
 
@@ -162,6 +176,7 @@ context/
 │   ├── research/
 │   ├── simulate/
 │   └── eval/
+├── ontology/        # Shared & mode-specific business concepts (shared.yaml, analytics_ontology.yaml, eda_ontology.yaml)
 ├── rules/           # YAML rule files (SQL guardrails, action matrices, research budgets)
 ├── schemas/         # Warehouse DDL injected into SQL generation prompts
 ├── personas/        # YAML persona definitions for research and simulate modes
@@ -169,6 +184,14 @@ context/
 ```
 
 Every `DecisionLog` row records the context commit SHA. Every new SHA gets a `ContextSnapshot` manifest — so any decision is reproducible from the exact prompts and rules that produced it.
+
+### Domain ontology
+
+The agent's conceptual understanding is defined in `context/ontology/`:
+- `shared.yaml` — Shared business concepts, entities (e.g. `customer`, `order`, `revenue`), and relationships used across `eda` and `analytics` modes.
+- `{mode}_ontology.yaml` — Mode-specific concept additions and overrides (e.g. `eda_ontology.yaml`, `analytics_ontology.yaml`).
+
+At runtime, `load_context_for_mode()` merges shared and mode-specific concepts (deduplicating by concept ID) and injects the resulting ontology into `generate_sql` and `plan_analysis` prompt templates.
 
 ---
 
@@ -210,6 +233,7 @@ Failure modes tracked per run:
 | `data_selection_error` | Wrong table, column, or join key selected |
 | `implementation_error` | Correct plan, incorrect SQL / regex / transformation |
 | `runtime_error` | Execution failed (DB error, timeout, API unavailable) |
+| `semantic_misunderstanding` | Business terminology, ontology mapping, or metric semantics misunderstood |
 
 ### Writing test cases
 
@@ -226,6 +250,95 @@ cases:
       query: "What is total revenue?"
     expected:
       sql: "SELECT SUM(amount) AS total_revenue FROM orders"
+```
+
+---
+
+## Reinforcement Learning & Training
+
+The repository includes a dedicated RL training stack for the data analyst agent, featuring a Gymnasium environment, Docker-sandboxed execution, eval-derived rewards, and policy evaluation.
+
+```
+rl_env/                         # Gymnasium environment & sandboxing
+├── env.py                      # DataAnalystEnv
+├── sandbox.py                  # Hardened Docker Python execution
+└── rewards.py                  # Reward calculator from eval scorers
+training/                       # RL training loop scaffolding
+└── train_rl.py                 # Episode driver & trajectory collector
+evals/                          # Checkpointed policy evaluation
+└── run_eval.py                 # RLEvalRunner + train/eval split protection
+```
+
+### `DataAnalystEnv` (`rl_env/env.py`)
+
+`DataAnalystEnv` is a `gymnasium.Env` wrapping the full OODA EDA loop:
+1. Emits observation text containing the current question, hypotheses, available schema/ontology context, and prior query evidence.
+2. Accepts actions formatted as JSON: `{"action_type": "sql" | "python", "content": "<query or script>"}`. The policy's action directly replaces `generate_eda_sql`.
+3. Advances through `execute_eda_sql` → `evaluate_hypothesis` → `decide_next_step`.
+4. Returns modern 5-tuples: `(observation, reward, terminated, truncated, info)`.
+   - `terminated = True` when the loop decides to finalize findings.
+   - `truncated = True` when exceeding the step budget (default 5 steps).
+
+#### Sandboxed action execution
+
+- **SQL actions (`action_type: "sql"`)**: Validated via AST checks in `validate_sql` (SELECT-only guardrails) and executed against DuckDB in read-only mode.
+- **Python actions (`action_type: "python"`)**: Routed to `DockerSandbox` (`sandbox.py`), an isolated and hardened container:
+  - Base image: `python:3.12-slim`
+  - Non-root user: `nobody` (UID `65534`)
+  - Hard resource limits: 256 MB memory cap, 0.5 CPU
+  - Network disabled (`network_disabled=True`)
+  - Read-only root filesystem with code injected via in-memory tar stream (no host bind mounts)
+  - Enforced timeout with hard kill and guaranteed container cleanup
+
+#### Reward composition (`rl_env/rewards.py`)
+
+Scalar rewards are computed from three components:
+
+| Component | Value | Condition |
+|---|---|---|
+| **Scorer match** | `+1.0` | Any of the 4 eval scorers (`exact_sql`, `execution_match`, `exact_match`, `llm_judge`) returns `1.0` |
+| **Execution penalty** | `-0.1` | SQL validation failure or non-zero sandbox exit code |
+| **Time penalty** | `-0.01` | Applied on every step to encourage concise, efficient trajectories |
+
+### Training loop (`training/train_rl.py`)
+
+`train_rl.py` is an algorithm-agnostic training loop that steps `DataAnalystEnv` across episodes, collecting `EpisodeTrajectory` and `StepRecord` objects:
+
+```bash
+cd training
+
+# Run the training loop across YAML episode files
+uv run python train_rl.py \
+    --warehouse ../multi-agent-backend/backend/data/analytics.duckdb \
+    --train-episodes ../rl_env/episodes/train/ \
+    --episodes 100 \
+    --max-steps 5
+```
+
+> [!NOTE]
+> The environment exposes a `Text` action space (JSON-encoded). Standard discrete/box RL libraries (e.g. Stable-Baselines3) do not consume text actions. This loop is scaffolding intended for LLM RL frameworks such as **TRL** (`PPOTrainer` / `GRPOTrainer`), custom language-model policy heads, or **verifiers**-style frameworks.
+
+### Policy evaluation & split guards (`evals/run_eval.py`)
+
+`RLEvalRunner` evaluates trained policy checkpoints using the production benchmark harness and failure taxonomy:
+
+- **Train/eval split protection**: `assert_disjoint_splits()` compares absolute paths of all YAML episode files at startup and raises a `RuntimeError` if any file appears in both splits, preventing benchmark data leakage.
+- **Unified scoring**: Runs identical scoring rubrics and failure classifications as the live agent harness.
+
+```bash
+cd evals
+
+# Evaluate a policy checkpoint against a test suite
+uv run python run_eval.py \
+    --checkpoint ../checkpoints/policy_v1.pt \
+    --suite ../multi-agent-backend/backend/context/evaluations/analytics_suite.yaml \
+    --train-episodes ../rl_env/episodes/train/ \
+    --eval-episodes ../evals/episodes/eval/
+
+# Run the full benchmark suite
+uv run python run_eval.py --benchmark --all \
+    --checkpoint ../checkpoints/policy_v1.pt \
+    --eval-episodes ../evals/episodes/eval/
 ```
 
 ---
@@ -329,6 +442,17 @@ curl -X POST localhost:8000/v1/signals/<signal_id>/approve \
 ```
 OODA-Agent/
 ├── start.sh                          # One-shot macOS setup + launcher
+├── rl_env/                           # Gymnasium RL training environment
+│   ├── env.py                        # DataAnalystEnv (text obs & action spaces)
+│   ├── sandbox.py                    # Hardened Docker Python execution sandbox
+│   ├── rewards.py                    # Reward composition from eval scorers
+│   └── pyproject.toml
+├── evals/                            # Policy evaluation & split guard
+│   ├── run_eval.py                   # RLEvalRunner + assert_disjoint_splits
+│   └── pyproject.toml
+├── training/                         # RL training loop scaffolding
+│   ├── train_rl.py                   # Episode runner & trajectory collector
+│   └── pyproject.toml
 └── multi-agent-backend/
     ├── docker-compose.yml
     ├── litellm_config.yaml
@@ -359,6 +483,12 @@ OODA-Agent/
         ├── routes/                   # API routes
         ├── clients/                  # Service clients
         ├── context/                  # Git-versioned agent context
+        │   ├── prompts/
+        │   ├── ontology/             # Shared & mode-specific concept models
+        │   ├── rules/
+        │   ├── schemas/
+        │   ├── personas/
+        │   └── evaluations/
         └── tests/
 ```
 
