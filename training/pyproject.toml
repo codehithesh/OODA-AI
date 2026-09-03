@@ -1,0 +1,39 @@
+[project]
+name = "training"
+version = "0.1.0"
+description = "Algorithm-agnostic RL training loop scaffold for the OODA-AI data analyst agent."
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb==1.5.5",
+    "httpx==0.28.1",
+    "pydantic==2.13.5",
+    "pyyaml==6.0.3",
+    "structlog==26.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.16.5",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+multi-agent-backend = { path = "../multi-agent-backend/backend", editable = true }
+rl-env = { path = "../rl_env", editable = true }
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "ASYNC", "C4", "SIM", "RUF"]
