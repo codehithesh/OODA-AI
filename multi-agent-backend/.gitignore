@@ -12,8 +12,6 @@ build/
 .env
 .env.local
 
-# Local data (DuckDB analytical store)
-backend/data/
 
 # OS / editor
 .DS_Store
