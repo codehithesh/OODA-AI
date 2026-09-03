@@ -82,13 +82,11 @@ def validate_sql(sql: str, rules: dict[str, Any] | None) -> ValidationResult:
     if not first_word or first_word.group(0).lower() not in starters:
         errors.append(f"statement must start with {' or '.join(starters).upper()}")
 
-    body = sql.strip()
-    if body.endswith(";"):
-        body = body[:-1]
+    body = stripped.rstrip(";")
     if rules.get("require_single_statement", True) and ";" in body:
         errors.append("multiple statements are not allowed")
 
-    if body.count("(") != body.count(")"):
+    if stripped.count("(") != stripped.count(")"):
         errors.append("unbalanced parentheses")
 
     max_len = int(rules.get("max_query_length", 5000))

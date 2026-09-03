@@ -353,3 +353,47 @@ def test_decision_log_with_multiple_errors() -> None:
     }
     record = DecisionLogRead(**data)
     assert "forbidden" in record.error.lower()
+
+
+# ============================================================================
+# Validation & Chat Formatting Fixes
+# ============================================================================
+
+
+def test_validate_sql_semicolon_and_parentheses_in_literals() -> None:
+    """Semicolons and parentheses inside quoted strings do not fail validation."""
+    from nodes.validate_sql import validate_sql
+
+    sql1 = "SELECT * FROM events WHERE description = 'step 1; step 2'"
+    result1 = validate_sql(sql1, None)
+    assert result1.sql_valid is True, f"Failed: {result1.sql_validation_errors}"
+
+    sql2 = "SELECT * FROM events WHERE note LIKE '%(closed)%'"
+    result2 = validate_sql(sql2, None)
+    assert result2.sql_valid is True, f"Failed: {result2.sql_validation_errors}"
+
+    sql3 = "SELECT * FROM events WHERE note = ')'"
+    result3 = validate_sql(sql3, None)
+    assert result3.sql_valid is True, f"Failed: {result3.sql_validation_errors}"
+
+
+def test_format_eda_unwraps_nested_analysis_state() -> None:
+    """_format_eda extracts fields when nested inside analysis_state key."""
+    from routes.chat import _format_eda
+
+    nested_output = {
+        "analysis_state": {
+            "business_question": "How to increase sales?",
+            "analysis_plan": "Explore regional sales.",
+            "metrics": {"total_tokens": 1200, "total_cost_usd": 0.005, "total_latency_ms": 350},
+            "findings": [{"statement": "EMEA is growing", "confidence": 0.9, "is_fact": True}],
+            "recommendations": [{"recommendation": "Expand EMEA", "priority": 1, "confidence": 0.85}],
+        }
+    }
+    rendered = _format_eda(nested_output)
+    assert "How to increase sales?" in rendered
+    assert "Explore regional sales." in rendered
+    assert "EMEA is growing" in rendered
+    assert "Expand EMEA" in rendered
+    assert "1,200 tokens" in rendered
+

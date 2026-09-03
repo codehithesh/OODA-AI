@@ -61,6 +61,19 @@ logger = structlog.get_logger(__name__)
 _DEFAULT_MAX_STEPS = 5
 
 
+def _run_async(coro: Any) -> Any:
+    """Run an async coroutine safely whether or not an event loop is active."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    else:
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            return executor.submit(asyncio.run, coro).result()
+
+
 # ---------------------------------------------------------------------------
 # Episode question schema
 # ---------------------------------------------------------------------------
@@ -81,7 +94,13 @@ class EpisodeQuestion:
 
     def __init__(self, data: dict[str, Any]) -> None:
         self.id: str = data.get("id", str(uuid.uuid4()))
-        self.question: str = data["question"]
+        inp = data.get("input") if isinstance(data.get("input"), dict) else {}
+        self.question: str = (
+            data.get("question")
+            or inp.get("query")
+            or inp.get("question")
+            or ""
+        )
         self.hypothesis: str = data.get("hypothesis", "")
         self.expected: dict[str, Any] = data.get("expected", {})
         self.scorer: str | None = data.get("scorer")
@@ -136,6 +155,7 @@ class DataAnalystEnv(gym.Env):
         default_scorer: str = "execution_match",
         max_steps: int = _DEFAULT_MAX_STEPS,
         sandbox_timeout: int = 30,
+        sandbox_image: str = "python:3.12-slim",
         duckdb_max_rows: int = 200,
         litellm_client: Any | None = None,
         duckdb_client: Any | None = None,
@@ -147,13 +167,13 @@ class DataAnalystEnv(gym.Env):
         # NOTE: gymnasium.spaces.Text does not set a hard upper bound on length
         # by default.  Box/Discrete-oriented RL libraries will not consume these
         # directly; this is standard for LLM-policy RL environments.
-        self.observation_space = gym.spaces.Text(min_length=0)
+        self.observation_space = gym.spaces.Text(max_length=1_000_000, min_length=0)
 
         # Action space: also Text because the action is a JSON-serialised dict
         # {"action_type": "sql"|"python", "content": str}.  A proper
         # Dict(Discrete, Text) compound space is not supported by gymnasium's
         # current Text implementation; the JSON encoding is the contract.
-        self.action_space = gym.spaces.Text(min_length=1)
+        self.action_space = gym.spaces.Text(max_length=100_000, min_length=1)
 
         self.max_steps = max_steps
         self.default_scorer = default_scorer
@@ -198,7 +218,7 @@ class DataAnalystEnv(gym.Env):
 
         # --- sandbox (only used for action_type='python') ---
         from rl_env.sandbox import DockerSandbox
-        self._sandbox = DockerSandbox(timeout_seconds=sandbox_timeout)
+        self._sandbox = DockerSandbox(base_image=sandbox_image, timeout_seconds=sandbox_timeout)
 
         # --- mutable episode state (reset on each reset() call) ---
         self._current_episode: EpisodeQuestion | None = None
@@ -312,7 +332,7 @@ class DataAnalystEnv(gym.Env):
 
         # --- run EDA loop iteration (generate → execute → evaluate → decide) ---
         if exec_error is None:
-            eda_result, eda_error = asyncio.run(
+            eda_result, eda_error = _run_async(
                 self._run_eda_iteration(action_type, content, exec_output)
             )
             if eda_error:
@@ -328,14 +348,17 @@ class DataAnalystEnv(gym.Env):
         if exec_error is not None:
             reward_obj = self._reward_calc.execution_error_reward(detail=exec_error)
         else:
-            reward_obj = asyncio.run(
-                self._reward_calc.acompute(
-                    output={**exec_output, "generated_sql": content if action_type == "sql" else ""},
-                    expected=self._current_episode.expected,
-                    scorer=self._current_episode.scorer,
-                    fixture=self._current_episode.fixture,
+            try:
+                reward_obj = _run_async(
+                    self._reward_calc.acompute(
+                        output={**exec_output, "generated_sql": content if action_type == "sql" else ""},
+                        expected=self._current_episode.expected,
+                        scorer=self._current_episode.scorer,
+                        fixture=self._current_episode.fixture,
+                    )
                 )
-            )
+            except Exception as exc:
+                reward_obj = self._reward_calc.execution_error_reward(detail=f"reward computation error: {exc}")
 
         # --- truncation check ---
         truncated = self._step_count >= self.max_steps and not terminated
@@ -412,7 +435,7 @@ class DataAnalystEnv(gym.Env):
             return {}, f"SQL validation failed: {errors}"
 
         try:
-            result = asyncio.run(self._db.aquery(sql))
+            result = _run_async(self._db.aquery(sql))
             return result, None
         except Exception as exc:
             return {}, f"SQL execution error: {exc}"
@@ -454,6 +477,7 @@ class DataAnalystEnv(gym.Env):
         """
         try:
             # Late imports — keep rl_env importable without the backend on path.
+            from analysis_state import AnalysisState  # type: ignore[import]
             from nodes.eda_loop import (  # type: ignore[import]
                 decide_next_step,
                 evaluate_hypothesis,
@@ -462,6 +486,28 @@ class DataAnalystEnv(gym.Env):
             )
         except ImportError as exc:
             return {}, f"backend eda_loop import failed: {exc}"
+
+        # Register the executed action into analysis_state so hypothesis evaluation has evidence
+        analysis = AnalysisState.model_validate(self._analysis_state)
+        pending = analysis.pending_hypotheses()
+        hyp_id = pending[0].id if pending else None
+        sub_q = (
+            pending[0].required_evidence[0]
+            if pending and pending[0].required_evidence
+            else (analysis.business_question or (self._current_episode.question if self._current_episode else ""))
+        )
+
+        q = analysis.add_query(
+            sql=content if action_type == "sql" else f"# python action\n{content}",
+            rationale=f"Policy action ({action_type})",
+            hypothesis_id=hyp_id,
+            sub_question=sub_q,
+        )
+        q.executed = True
+        q.rows = exec_output.get("rows", [])
+        q.row_count = exec_output.get("row_count", len(q.rows))
+        q.columns = exec_output.get("columns", [])
+        self._analysis_state = analysis.model_dump()
 
         # Seed state with the action the policy already took.
         state: dict[str, Any] = {
@@ -524,28 +570,50 @@ def _load_episodes(path: Path) -> list[EpisodeQuestion]:
     """Load episode YAML files from *path* (file or directory).
 
     Supports:
-      - a single YAML file containing a mapping (one episode) or a list of mappings
+      - a single YAML file containing a mapping (one episode), a list of mappings,
+        or an EvalSuite structure (with a top-level 'cases' list)
       - a directory — every *.yaml / *.yml file is loaded recursively
     """
     if path.is_file():
-        return _parse_yaml_file(path)
-    if path.is_dir():
-        episodes: list[EpisodeQuestion] = []
+        episodes = _parse_yaml_file(path)
+    elif path.is_dir():
+        episodes = []
         for yaml_file in sorted(path.rglob("*.yaml")) + sorted(path.rglob("*.yml")):
             episodes.extend(_parse_yaml_file(yaml_file))
-        return episodes
-    raise FileNotFoundError(
-        f"training_episodes_path {path!r} is neither a file nor a directory."
-    )
+    else:
+        raise FileNotFoundError(
+            f"training_episodes_path {path!r} is neither a file nor a directory."
+        )
+
+    if not episodes:
+        raise ValueError(
+            f"No valid episode questions could be loaded from training_episodes_path {path!r}. "
+            "Ensure the path contains valid episode YAML files with 'question' or 'cases'."
+        )
+    return episodes
 
 
 def _parse_yaml_file(path: Path) -> list[EpisodeQuestion]:
     raw = yaml.safe_load(path.read_text()) or {}
     if isinstance(raw, list):
         return [EpisodeQuestion(item) for item in raw if isinstance(item, dict)]
-    if isinstance(raw, dict) and "question" in raw:
-        return [EpisodeQuestion(raw)]
-    logger.warning("episode_yaml_skipped", path=str(path), reason="no 'question' key found")
+    if isinstance(raw, dict):
+        if "question" in raw:
+            return [EpisodeQuestion(raw)]
+        if "cases" in raw and isinstance(raw["cases"], list):
+            suite_scorer = raw.get("scorer")
+            suite_fixture = raw.get("fixture")
+            episodes: list[EpisodeQuestion] = []
+            for item in raw["cases"]:
+                if isinstance(item, dict):
+                    q_data = dict(item)
+                    if "scorer" not in q_data and suite_scorer:
+                        q_data["scorer"] = suite_scorer
+                    if "fixture" not in q_data and suite_fixture:
+                        q_data["fixture"] = suite_fixture
+                    episodes.append(EpisodeQuestion(q_data))
+            return episodes
+    logger.warning("episode_yaml_skipped", path=str(path), reason="no 'question' or 'cases' key found")
     return []
 
 
@@ -558,7 +626,7 @@ def _initial_analysis_state(episode: EpisodeQuestion) -> dict[str, Any]:
     """
     return {
         "run_id": str(uuid.uuid4()),
-        "query": episode.question,
+        "business_question": episode.question,
         "hypotheses": (
             [
                 {
@@ -579,7 +647,7 @@ def _initial_analysis_state(episode: EpisodeQuestion) -> dict[str, Any]:
         "current_iteration": 0,
         "max_iterations": _DEFAULT_MAX_STEPS,
         "analysis_complete": False,
-        "termination_reason": None,
+        "termination_reason": "",
         "needs_web_research": False,
         "web_searches": [],
         "metrics": {
@@ -590,5 +658,5 @@ def _initial_analysis_state(episode: EpisodeQuestion) -> dict[str, Any]:
             "total_cost_usd": 0.0,
         },
         "warehouse_schema": {},
-        "analysis_plan": None,
+        "analysis_plan": "",
     }

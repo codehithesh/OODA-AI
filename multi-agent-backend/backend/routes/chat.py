@@ -213,14 +213,17 @@ def _format_eda(output: dict[str, Any]) -> str:
     """
     lines: list[str] = []
 
-    question = output.get("business_question", "")
-    plan = output.get("analysis_plan", "")
-    metrics = output.get("metrics") or {}
-    findings = output.get("findings") or []
-    recommendations = output.get("recommendations") or []
-    visualizations = output.get("visualizations") or []
-    fused = output.get("fused_context")
-    failure_modes = output.get("failure_modes") or []
+    # Unwrap AnalysisState if output is the full LangGraph state dict
+    data = output.get("analysis_state") if isinstance(output.get("analysis_state"), dict) else output
+
+    question = data.get("business_question", "")
+    plan = data.get("analysis_plan", "")
+    metrics = data.get("metrics") or {}
+    findings = data.get("findings") or []
+    recommendations = data.get("recommendations") or []
+    visualizations = data.get("visualizations") or []
+    fused = data.get("fused_context")
+    failure_modes = data.get("failure_modes") or []
 
     # ── Header ───────────────────────────────────────────────────────────────
     lines += ["## 📊 EDA Results", ""]

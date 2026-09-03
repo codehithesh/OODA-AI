@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Benchmark suite for RL-trained OODA-AI policies — thin extension of the live eval harness."
 requires-python = ">=3.12"
 dependencies = [
+    "multi-agent-backend",
+    "rl-env",
     "duckdb==1.5.5",
     "httpx==0.28.1",
     "pydantic==2.13.5",

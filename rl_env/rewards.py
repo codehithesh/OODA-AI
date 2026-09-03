@@ -221,49 +221,61 @@ class RewardCalculator:
     ) -> tuple[float, str | None]:
         import duckdb  # local import — duckdb is a direct dep of rl_env
 
-        if scorer == "exact_sql":
-            candidate = normalize_sql(str(output.get("generated_sql", "")))
-            expected_sql = normalize_sql(str(expected.get("sql", "")))
-            matched = candidate == expected_sql
-            return (1.0 if matched else 0.0), (
-                None if matched else f"candidate != expected\n  got:      {candidate[:120]}\n  expected: {expected_sql[:120]}"
-            )
-
-        if scorer == "execution_match":
-            with duckdb.connect(":memory:") as conn:
-                run_fixture(conn, fixture)
-                candidate_rows = fixture_rows(conn, str(output.get("generated_sql", "")))
-                expected_rows = fixture_rows(conn, str(expected.get("sql", "")))
-            matched = candidate_rows == expected_rows
-            return (1.0 if matched else 0.0), (None if matched else "result sets differ")
-
-        if scorer == "exact_match":
-            candidate = output.get(output_field)
-            exp_val = expected.get(output_field)
-            matched = candidate == exp_val
-            return (1.0 if matched else 0.0), f"{output_field}: {candidate!r} vs {exp_val!r}"
-
-        if scorer == "llm_judge":
-            if self._litellm is None:
-                raise RuntimeError(
-                    "llm_judge scorer requires a LiteLLMClient — pass one to "
-                    "RewardCalculator(litellm_client=...)"
+        try:
+            if scorer == "exact_sql":
+                candidate_raw = str(output.get("generated_sql", "")).strip()
+                expected_raw = str(expected.get("sql", "")).strip()
+                if not candidate_raw:
+                    return 0.0, "no SQL generated"
+                candidate = normalize_sql(candidate_raw)
+                expected_sql = normalize_sql(expected_raw)
+                matched = candidate == expected_sql
+                return (1.0 if matched else 0.0), (
+                    None if matched else f"candidate != expected\n  got:      {candidate[:120]}\n  expected: {expected_sql[:120]}"
                 )
-            # Late import — prompt_loader lives in the backend package.
-            from clients.prompt_loader import get_default_prompt_loader  # type: ignore[import]
 
-            loader = get_default_prompt_loader()
-            prompt = loader.render(
-                "eval/judge.md",
-                input={},
-                expected=expected,
-                output=output,
-                rubric=rubric,
-            )
-            response = await self._litellm.chat([{"role": "user", "content": prompt}])
-            score = parse_judge_score(response.content)
-            return score, response.content[:200]
+            if scorer == "execution_match":
+                candidate_sql = str(output.get("generated_sql", "")).strip()
+                expected_sql = str(expected.get("sql", "")).strip()
+                if not candidate_sql:
+                    return 0.0, "no SQL generated"
+                if not expected_sql:
+                    return 0.0, "no expected SQL in ground truth"
+                with duckdb.connect(":memory:") as conn:
+                    if fixture:
+                        run_fixture(conn, fixture)
+                    candidate_rows = fixture_rows(conn, candidate_sql)
+                    expected_rows = fixture_rows(conn, expected_sql)
+                matched = candidate_rows == expected_rows
+                return (1.0 if matched else 0.0), (None if matched else "result sets differ")
 
-        raise ValueError(
-            f"unknown scorer: {scorer!r}. Must be one of {sorted(self._VALID_SCORERS)}"
-        )
+            if scorer == "exact_match":
+                candidate = output.get(output_field)
+                exp_val = expected.get(output_field)
+                matched = candidate == exp_val
+                return (1.0 if matched else 0.0), f"{output_field}: {candidate!r} vs {exp_val!r}"
+
+            if scorer == "llm_judge":
+                if self._litellm is None:
+                    raise RuntimeError(
+                        "llm_judge scorer requires a LiteLLMClient — pass one to "
+                        "RewardCalculator(litellm_client=...)"
+                    )
+                # Late import — prompt_loader lives in the backend package.
+                from clients.prompt_loader import get_default_prompt_loader  # type: ignore[import]
+
+                loader = get_default_prompt_loader()
+                prompt = loader.render(
+                    "eval/judge.md",
+                    input={},
+                    expected=expected,
+                    output=output,
+                    rubric=rubric,
+                )
+                response = await self._litellm.chat([{"role": "user", "content": prompt}])
+                score = parse_judge_score(response.content)
+                return score, response.content[:200]
+
+            raise ValueError(f"unknown scorer: {scorer!r}")
+        except Exception as exc:
+            return 0.0, f"scorer error: {exc}"

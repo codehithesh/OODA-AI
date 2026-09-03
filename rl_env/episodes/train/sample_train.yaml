@@ -1,0 +1,21 @@
+# Training episodes split for DataAnalystEnv
+- id: train_total_revenue
+  question: "What is the total revenue across all orders?"
+  hypothesis: "Revenue is the sum of order amounts across all paid and completed orders."
+  expected:
+    sql: "SELECT SUM(amount) AS total_revenue FROM orders"
+  scorer: exact_sql
+
+- id: train_orders_by_region
+  question: "How many orders are there per region?"
+  hypothesis: "Orders are distributed across regions (EMEA, NA, APAC)."
+  expected:
+    sql: "SELECT region, COUNT(*) AS order_count FROM orders GROUP BY region"
+  scorer: execution_match
+  fixture: |
+    CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, region VARCHAR, status VARCHAR, amount DECIMAL(12,2), ordered_at TIMESTAMP);
+    INSERT INTO orders VALUES
+      (1, 10, 'emea', 'paid', 100.00, '2026-08-01 10:00'),
+      (2, 11, 'emea', 'paid', 150.00, '2026-08-02 11:00'),
+      (3, 12, 'na',   'paid', 90.00,  '2026-08-03 09:30'),
+      (4, 13, 'apac', 'refunded', 60.00, '2026-08-04 16:00');

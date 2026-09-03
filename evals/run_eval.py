@@ -50,7 +50,7 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Train / eval split guard
 # ---------------------------------------------------------------------------
-def assert_disjoint_splits(train_path: Path, eval_path: Path) -> None:
+def assert_disjoint_splits(train_path: Path | str, eval_path: Path | str) -> None:
     """Assert that the training and evaluation episode sets are disjoint.
 
     Compares the resolved absolute paths of every YAML file found under each
@@ -59,14 +59,17 @@ def assert_disjoint_splits(train_path: Path, eval_path: Path) -> None:
 
     Parameters
     ----------
-    train_path : Path  — root passed to DataAnalystEnv(training_episodes_path=...)
-    eval_path  : Path  — root that RLEvalRunner loads its suites from
+    train_path : Path | str  — root passed to DataAnalystEnv(training_episodes_path=...)
+    eval_path  : Path | str  — root that RLEvalRunner loads its suites from
     """
-    def _collect(root: Path) -> set[Path]:
-        if root.is_file():
-            return {root.resolve()}
-        return {p.resolve() for p in root.rglob("*.yaml")} | {
-            p.resolve() for p in root.rglob("*.yml")
+    def _collect(root: Path | str) -> set[Path]:
+        p_root = Path(root)
+        if not p_root.exists():
+            return set()
+        if p_root.is_file():
+            return {p_root.resolve()}
+        return {p.resolve() for p in p_root.rglob("*.yaml")} | {
+            p.resolve() for p in p_root.rglob("*.yml")
         }
 
     train_files = _collect(train_path)

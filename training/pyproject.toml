@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Algorithm-agnostic RL training loop scaffold for the OODA-AI data analyst agent."
 requires-python = ">=3.12"
 dependencies = [
+    "multi-agent-backend",
+    "rl-env",
     "duckdb==1.5.5",
     "httpx==0.28.1",
     "pydantic==2.13.5",

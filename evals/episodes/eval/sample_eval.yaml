@@ -1,0 +1,17 @@
+# Evaluation suite split for RL policy evaluation
+suite: sample_eval_suite
+mode: analytics
+scorer: execution_match
+threshold: 0.75
+cases:
+  - id: eval_refunded_orders
+    input:
+      query: "List all refunded orders."
+    scorer: execution_match
+    fixture: |
+      CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, region VARCHAR, status VARCHAR, amount DECIMAL(12,2), ordered_at TIMESTAMP);
+      INSERT INTO orders VALUES
+        (5, 14, 'na', 'refunded', 25.50, '2026-08-05 08:00'),
+        (6, 15, 'emea', 'paid', 310.00, '2026-08-05 09:00');
+    expected:
+      sql: "SELECT order_id, customer_id, region, amount FROM orders WHERE status = 'refunded'"

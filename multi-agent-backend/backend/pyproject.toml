@@ -8,7 +8,7 @@ dependencies = [
     "uvicorn[standard]==0.52.4",
     "sqlalchemy[asyncio]==2.0.52",
     "asyncpg==0.31.0",
-    "psycopg[binary]==3.17.0",
+    "psycopg[binary]>=3.1.18",
     "alembic==1.19.1",
     "pydantic==2.13.5",
     "pydantic-settings==2.15.0",
@@ -30,6 +30,18 @@ dev = [
     "pytest-asyncio==1.4.0",
     "ruff==0.16.5",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["analysis_state", "benchmark", "config", "database", "eval_harness", "main", "models", "observability", "schemas"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nodes*", "graphs*", "routes*", "clients*", "tools*"]
+exclude = ["data*", "context*", "alembic*", "tests*"]
 
 [tool.uv]
 package = false

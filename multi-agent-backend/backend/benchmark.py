@@ -312,6 +312,20 @@ class BenchmarkRunner:
 
         passed = score >= suite.threshold
 
+        if not passed and not failure_modes:
+            inferred_mode = "implementation_error"
+            detail_lower = str(detail or "").lower()
+            if result.output.get("sql_valid") is False:
+                inferred_mode = "implementation_error"
+            elif any(k in detail_lower for k in ("table", "column", "unknown name", "catalog")):
+                inferred_mode = "data_selection_error"
+            elif any(k in detail_lower for k in ("semantic", "concept", "ontology", "business term")):
+                inferred_mode = "semantic_misunderstanding"
+            elif any(k in detail_lower for k in ("timeout", "connection", "fatal")):
+                inferred_mode = "runtime_error"
+            failure_modes = [inferred_mode]
+            failures = [{"mode": inferred_mode, "detail": detail or "", "step": "eval_scoring"}]
+
         return BenchmarkCaseResult(
             id=case.id,
             score=round(score, 4),
