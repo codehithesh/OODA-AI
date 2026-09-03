@@ -54,6 +54,7 @@ class FailureMode(str, Enum):
     DATA_SELECTION_ERROR = "data_selection_error"
     IMPLEMENTATION_ERROR = "implementation_error"
     RUNTIME_ERROR = "runtime_error"
+    SEMANTIC_MISUNDERSTANDING = "semantic_misunderstanding"
 
 
 # ---------------------------------------------------------------------------

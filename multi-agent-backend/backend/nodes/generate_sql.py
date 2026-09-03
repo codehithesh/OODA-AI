@@ -100,7 +100,8 @@ async def generate_sql(state: dict[str, Any], config: RunnableConfig) -> dict[st
     loader = get_prompt_loader(dict(config) if config else None)
     llm = get_litellm_client(dict(config) if config else None)
 
-    prompt = loader.render(template, query=inp.query, schema_ddl=ddl, rules=rules)
+    ontology = (context.get("ontology") or {})
+    prompt = loader.render(template, query=inp.query, schema_ddl=ddl, rules=rules, ontology=ontology)
     response = await llm.chat([{"role": "user", "content": prompt}])
 
     sql = extract_sql_block(response.content)

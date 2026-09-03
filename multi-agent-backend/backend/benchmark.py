@@ -50,6 +50,7 @@ FAILURE_MODES = {
     FailureMode.DATA_SELECTION_ERROR: "data_selection_error_rate",
     FailureMode.IMPLEMENTATION_ERROR: "implementation_error_rate",
     FailureMode.RUNTIME_ERROR: "runtime_error_rate",
+    FailureMode.SEMANTIC_MISUNDERSTANDING: "semantic_misunderstanding_rate",
 }
 
 
@@ -113,6 +114,7 @@ class BenchmarkReport(BaseModel):
     data_selection_error_rate: float = 0.0
     implementation_error_rate: float = 0.0
     runtime_error_rate: float = 0.0
+    semantic_misunderstanding_rate: float = 0.0
     results: list[BenchmarkCaseResult] = Field(default_factory=list)
 
     def compute_aggregates(self) -> None:
@@ -137,6 +139,7 @@ class BenchmarkReport(BaseModel):
         self.data_selection_error_rate = round(fm_counts.get("data_selection_error", 0) / n, 4)
         self.implementation_error_rate = round(fm_counts.get("implementation_error", 0) / n, 4)
         self.runtime_error_rate = round(fm_counts.get("runtime_error", 0) / n, 4)
+        self.semantic_misunderstanding_rate = round(fm_counts.get("semantic_misunderstanding", 0) / n, 4)
         self.passed = sum(1 for r in self.results if r.passed)
         self.pass_rate = round(self.passed / n, 4) if n > 0 else 0.0
         self.mean_score = round(sum(r.score for r in self.results) / n, 4) if n > 0 else 0.0
@@ -162,6 +165,7 @@ class BenchmarkDashboard(BaseModel):
     data_selection_error_rate: float = 0.0
     implementation_error_rate: float = 0.0
     runtime_error_rate: float = 0.0
+    semantic_misunderstanding_rate: float = 0.0
     # Per-category breakdown
     by_category: dict[str, Any] = Field(default_factory=dict)
     # Per-suite results
@@ -193,6 +197,7 @@ class BenchmarkDashboard(BaseModel):
         self.data_selection_error_rate = round(fm_counts.get("data_selection_error", 0) / n, 4)
         self.implementation_error_rate = round(fm_counts.get("implementation_error", 0) / n, 4)
         self.runtime_error_rate = round(fm_counts.get("runtime_error", 0) / n, 4)
+        self.semantic_misunderstanding_rate = round(fm_counts.get("semantic_misunderstanding", 0) / n, 4)
         # By category
         by_cat: dict[str, list[BenchmarkCaseResult]] = defaultdict(list)
         for r in all_results:

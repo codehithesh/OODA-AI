@@ -77,7 +77,8 @@ async def plan_analysis(state: dict[str, Any], config: RunnableConfig) -> dict[s
 
     # Render planning prompt
     try:
-        prompt = loader.render("eda/plan_analysis.md", question=query, schema_ddl=ddl)
+        ontology = (context.get("ontology") or {})
+        prompt = loader.render("eda/plan_analysis.md", question=query, schema_ddl=ddl, ontology=ontology)
     except Exception:
         # Fallback: minimal prompt
         prompt = (
